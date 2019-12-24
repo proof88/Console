@@ -178,7 +178,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\PFL\PFL.h" />
+    <ClInclude Include="..\..\PFL\PFL\PFL.h" />
     <ClInclude Include="src\CConsole.h" />
   </ItemGroup>
   <ItemGroup>
