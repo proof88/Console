@@ -21,7 +21,7 @@
     <ClInclude Include="src\CConsole.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\PFL\PFL.h">
+    <ClInclude Include="..\..\PFL\PFL\PFL.h">
       <Filter>Header Files\PFL</Filter>
     </ClInclude>
   </ItemGroup>
