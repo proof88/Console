@@ -491,7 +491,16 @@ void CConsole::Initialize(const char* title, bool createLogFile)
 {
 #ifdef CCONSOLE_IS_ENABLED
     if ( !consoleImpl )
-        consoleImpl = new CConsoleImpl();
+    {
+        try
+        {
+            consoleImpl = new CConsoleImpl();
+        }
+        catch (const std::bad_alloc&)
+        {
+            return;
+        }
+    }
 
     if ( !consoleImpl->bInited && AllocConsole() )
     {
