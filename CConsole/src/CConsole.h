@@ -168,8 +168,8 @@ private:
     // ---------------------------------------------------------------------------
 
     CConsole(); 
-    CConsole(const CConsole& other);
-    CConsole& operator= (const CConsole& other);
+    CConsole(const CConsole&);
+    CConsole& operator= (const CConsole&);
     virtual ~CConsole();
 
 }; // class CConsole

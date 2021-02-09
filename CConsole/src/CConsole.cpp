@@ -516,7 +516,8 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             SetConsoleScreenBufferSize(consoleImpl->hConsole, crd);
         }
         RestoreDefaultColors();
-        if ( consoleImpl->bAllowLogFile = createLogFile )
+        consoleImpl->bAllowLogFile = createLogFile;
+        if ( createLogFile )
         {
             consoleImpl->fLog.open("log.html");
             if ( consoleImpl->fLog.fail() )
@@ -1831,13 +1832,13 @@ CConsole::CConsole()
 }
 
 
-CConsole::CConsole(const CConsole& other)
+CConsole::CConsole(const CConsole&)
 {
 
 }
 
 
-CConsole& CConsole::operator= (const CConsole& other)
+CConsole& CConsole::operator= (const CConsole&)
 {
     return *this;
 }
