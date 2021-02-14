@@ -8,11 +8,12 @@
 */
 
 #include "CConsole.h"
+#include <fstream>
+#include <iostream>
+#include <stdio.h> 
+#include <stdlib.h>
 #include "../../../PFL/PFL/PFL.h"
 
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
 
 // WINAPI header include just for the FOREGROUND_XXX and WORD macros and console API functions
 #ifndef WIN32_LEAN_AND_MEAN
@@ -20,15 +21,16 @@
 #endif
 #include <windows.h>
 
-
 // unused warnings
-// todo: revise these warnings
+// todo: revise these warnings when C++11 compiler is set, so that std::iota, etc can be used instead of itoa
 #pragma warning(disable:4996)  /* "may be unsafe" and "deprecated" */
-#pragma warning(disable:4267)  /* "conversion from 'size_t' to '...', possible loss of data" */
-
 
 /**
-    If CCONSOLE_IS_ENABLED macro is defined, there will be console window created and printouts will be visible, otherwise not.
+    If CCONSOLE_IS_ENABLED macro is defined, console window can be created and printouts will be visible, otherwise not.
+    Comment this macro when you definitely dont want any logging functionality in your program, so that even if your code
+    invokes the logging functions of this CConsole class, the log strings can be optimized out by the compiler since
+    it will see there is no functionality in the invoked functions. This can be useful if you really wanna optimize for
+    generated binary file size.
 */
 #ifndef CCONSOLE_IS_ENABLED
 #define CCONSOLE_IS_ENABLED
@@ -255,7 +257,7 @@ void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
 #ifdef CCONSOLE_IS_ENABLED
     oldClrFG = clrFG;
     pCaller->SetFGColor(clrInts);
-    _itoa(n,vmi,10);
+    itoa(n,vmi,10);
     WriteConsoleA(hConsole, vmi, strlen(vmi), &wrt, 0);
     if ( bAllowLogFile )
         fLog << "<font color=\"#" << clrIntsHtml << "\">" << vmi << "</font>";
