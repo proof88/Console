@@ -8,11 +8,14 @@
 */
 
 #include "CConsole.h"
-#include <fstream>
-#include <iostream>
+
 #include <stdio.h> 
 #include <stdlib.h>
 #include "../../../PFL/PFL/PFL.h"
+
+#include <fstream>
+#include <iostream>
+#include <string>
 
 
 // WINAPI header include just for the FOREGROUND_XXX and WORD macros and console API functions
@@ -104,6 +107,8 @@ private:
 
     std::ofstream fLog;
     bool bAllowLogFile;
+
+    std::string loggerName;     /**< Name of the current logger module that last invoked getConsoleInstance(). */
 
     // ---------------------------------------------------------------------------
 
@@ -479,9 +484,16 @@ void CConsole::CConsoleImpl::RestoreDefaultColorsExCaller()
 
 /**
     Gets the singleton instance.
+    @param logger Name of the logger who wants to use the singleton instance.
+           It is recommended to use the same name for same entity, because this logger name
+           is the basis of per-module filtering.
+    @return The singleton instance pre-set for the logger specified.
 */
-CConsole& CConsole::getConsoleInstance()
+CConsole& CConsole::getConsoleInstance(const char* loggerModule)
 {
+    if ( consoleInstance.consoleImpl && loggerModule ) {
+        consoleInstance.consoleImpl->loggerName = loggerModule;
+    }
     return consoleInstance;
 } // getConsoleInstance()
 

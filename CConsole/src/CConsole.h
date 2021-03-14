@@ -50,7 +50,7 @@ public:
 
     // ---------------------------------------------------------------------------
 
-    static CConsole& getConsoleInstance();   /**< Gets the singleton instance. */
+    static CConsole& getConsoleInstance(const char* loggerModule = "");   /**< Gets the singleton instance. */
 
     // ---------------------------------------------------------------------------
 
