@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 
 
@@ -108,7 +109,9 @@ private:
     std::ofstream fLog;
     bool bAllowLogFile;
 
-    std::string loggerName;     /**< Name of the current logger module that last invoked getConsoleInstance(). */
+    std::string loggerName;                /**< Name of the current logger module that last invoked getConsoleInstance(). */
+    std::set<std::string> enabledModules;  /**< Contains logger module names for which logging is enabled. */
+    bool        bErrorsAlwaysOn;           /**< Should module error logs always appear or not. */
 
     // ---------------------------------------------------------------------------
 
@@ -118,6 +121,8 @@ private:
     CConsoleImpl& operator=(const CConsoleImpl&);
 
     virtual ~CConsoleImpl();
+
+    bool canWeWriteBasedOnFilterSettings() const;
 
     void ImmediateWriteString(
         CConsole* pCaller, const char* text);    /**< Directly writes formatted string value to the console. */
@@ -164,6 +169,7 @@ CConsole::CConsoleImpl::CConsoleImpl()
 {
     hConsole = NULL;
     bInited = false;
+    bErrorsAlwaysOn = true;
     nIndentValue = 0;
     bFirstWriteTextCallAfterWriteTextLn = true;
     memset(clrFGhtml, 0, HTML_CLR_S);
@@ -208,13 +214,45 @@ CConsole::CConsoleImpl::~CConsoleImpl()
 } // ~CConsoleImpl()
 
 
+bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings() const
+{
+    if ( loggerName.empty() )
+    {
+        return true;
+    }
+
+    // magic module name for turning on all logging
+    auto it = enabledModules.find("4LLM0DUL3S");
+    if ( it != enabledModules.end() )
+    {
+        return true;
+    }
+
+    it = enabledModules.find(loggerName);
+    if ( it != enabledModules.end() )
+    {
+        return true;
+    }
+
+    if ( bErrorsAlwaysOn && (nMode == 1) )
+    {
+        return true;
+    }
+
+    return false;
+} // canWeWriteBasedOnFilterSettings()
+
+
 /**
     Directly writes formatted string value to the console.
-    Used by WriteFormattedTextEx().
+    Used by WriteFormattedTextEx() and operator<<()s.
 */
 void CConsole::CConsoleImpl::ImmediateWriteString(CConsole* pCaller, const char* text)
 {
 #ifdef CCONSOLE_IS_ENABLED
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
     oldClrFG = clrFG;
     //oldClrFGhtml = clrFGhtml;
     if ( text != NULL )
@@ -238,11 +276,14 @@ void CConsole::CConsoleImpl::ImmediateWriteString(CConsole* pCaller, const char*
 
 /**
     Directly writes formatted boolean value to the console.
-    Used by WriteFormattedTextEx().
+    Used by WriteFormattedTextEx() and operator<<()s.
 */
 void CConsole::CConsoleImpl::ImmediateWriteBool(CConsole* pCaller, bool l)
 {
 #ifdef CCONSOLE_IS_ENABLED
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
     oldClrFG = clrFG;
     pCaller->SetFGColor(clrBools);
     WriteConsoleA(hConsole, l ? "true" : "false", l ? 4 : 5, &wrt, 0);
@@ -255,11 +296,14 @@ void CConsole::CConsoleImpl::ImmediateWriteBool(CConsole* pCaller, bool l)
 
 /**
     Directly writes formatted integer value to the console.
-    Used by WriteFormattedTextEx().
+    Used by WriteFormattedTextEx() and operator<<()s.
 */
 void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
 {
 #ifdef CCONSOLE_IS_ENABLED
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
     oldClrFG = clrFG;
     pCaller->SetFGColor(clrInts);
     itoa(n,vmi,10);
@@ -273,11 +317,14 @@ void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
 
 /**
     Directly writes formatted floating-point value to the console.
-    Used by WriteFormattedTextEx().
+    Used by WriteFormattedTextEx() and operator<<()s.
 */
 void CConsole::CConsoleImpl::ImmediateWriteFloat(CConsole* pCaller, float f)
 {
 #ifdef CCONSOLE_IS_ENABLED
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
     oldClrFG = clrFG;
     sprintf(vmi, "%0.4f", f);
     size_t newlen = strlen(vmi);
@@ -295,11 +342,14 @@ void CConsole::CConsoleImpl::ImmediateWriteFloat(CConsole* pCaller, float f)
 
 /**
     Directly writes unformatted text to the console.
-    Used by WriteFormattedTextEx().
+    Used by WriteFormattedTextEx(), WriteFormattedTextExCaller() and operator<<()s.
 */
 void CConsole::CConsoleImpl::WriteText(const char* text)
 {
 #ifdef CCONSOLE_IS_ENABLED
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
     oldClrFG = clrFG;
     clrFG = clrStrings;
     WriteConsoleA(hConsole, text, strlen(text), &wrt, 0);
@@ -424,7 +474,10 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
     @param nl   Whether to print newline after the text or not. This also activates success/error counting.
 */
 void CConsole::CConsoleImpl::WriteFormattedTextExCaller(CConsole* pCaller, const char* fmt, va_list list, bool nl)
-{
+{           
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
     WriteFormattedTextEx(pCaller, fmt, list);
     if ( nl )
     {
@@ -499,6 +552,63 @@ CConsole& CConsole::getConsoleInstance(const char* loggerModule)
 
 
 /**
+    Sets logging on or off for the given logger module.
+    By default logging is NOT enabled for any logger modules.
+    Initially logging can be done only with empty loggerModule name.
+    For specific modules that invoke getConsoleInstance() with their module name, logging
+    state must be enabled in order to make their logs actually appear.
+
+    @param loggerModule Name of the logger who wants to change its logging state.
+                        If this is "4LLM0DUL3S", the given state turns full verbose logging on or off, regardless of any other logging state.
+    @param state True to enable logging of the loggerModule, false to disable.
+*/
+void CConsole::SetLoggingState(const char* loggerModule, bool state)
+{
+    if ( !consoleImpl || !consoleImpl->bInited )
+        return;
+    
+    const size_t sizeOfLoggerModuleNameBuffer = sizeof(char)*(strlen(loggerModule)+1);
+    char* const newNameLoggerModule = (char* const )malloc(sizeOfLoggerModuleNameBuffer);
+    if ( newNameLoggerModule == nullptr )
+        return;
+
+    strncpy_s(newNameLoggerModule, sizeOfLoggerModuleNameBuffer, loggerModule, sizeOfLoggerModuleNameBuffer);
+    PFL::strClr(newNameLoggerModule);
+    if ( strlen(newNameLoggerModule) == 0 )
+    {
+        free(newNameLoggerModule);
+        return;
+    }
+    free(newNameLoggerModule);
+
+    if ( state )
+    {
+        consoleImpl->enabledModules.insert(loggerModule);
+    }
+    else 
+    {
+        consoleImpl->enabledModules.erase(loggerModule);
+    }
+} // SetLoggingState 
+
+
+/**
+    Sets errors always appear irrespective of logging state of current logger module.
+    Default value is true.
+
+    @param state True will make module error logs appear even if module logging state is false for the current module.
+                 False will let module errors logs be controlled purely by module logging states.
+*/
+void CConsole::SetErrorsAlwaysOn(bool state)
+{
+    if ( !consoleImpl || !consoleImpl->bInited )
+        return;
+
+    consoleImpl->bErrorsAlwaysOn = state;
+} // SetErrorsAlwaysOn()
+
+
+/**
     This creates actually the console window.
 */
 void CConsole::Initialize(const char* title, bool createLogFile)
@@ -518,6 +628,10 @@ void CConsole::Initialize(const char* title, bool createLogFile)
 
     if ( !consoleImpl->bInited && AllocConsole() )
     {
+        // hack to let logs of this initialize function pass thru 
+        const std::string prevLoggerName = consoleImpl->loggerName;
+        consoleImpl->loggerName = "";
+        
         consoleImpl->bInited = true;
         consoleImpl->nErrorOutCount = 0;
         consoleImpl->nSuccessOutCount = 0;
@@ -552,6 +666,9 @@ void CConsole::Initialize(const char* title, bool createLogFile)
 
         SOLn(" > CConsole has been initialized!");
 
+        // now we get rid of our hack
+        consoleImpl->loggerName = prevLoggerName;
+
     } // if
 #endif
 } // Initialize()
@@ -568,6 +685,7 @@ void CConsole::Deinitialize()
         return;
 
     OLn("CConsole::Deinitialize()");
+    // consoleImpl->enabledModules.clear() when reference counter reaches 0!
     this->~CConsole();
 #endif
 } // Deinitialize()

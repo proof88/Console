@@ -54,6 +54,9 @@ public:
 
     // ---------------------------------------------------------------------------
 
+    void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
+    void SetErrorsAlwaysOn(bool state);                          /**< Sets errors always appear irrespective of logging state of current logger module. */
+
     void Initialize(
         const char* title,
         bool createLogFile );     /**< This creates actually the console window. */
