@@ -61,6 +61,7 @@ public:
         const char* title,
         bool createLogFile );     /**< This creates actually the console window. */
     void Deinitialize();          /**< This deletes the console window. */
+    bool isInitialized() const;   /**< Tells if console window is already initialized. */
 
     int  getIndent() const;       /**< Gets the current indentation. */
     void SetIndent(int value);    /**< Sets the current indentation. */

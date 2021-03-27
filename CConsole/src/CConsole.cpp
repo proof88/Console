@@ -73,7 +73,8 @@ private:
 
     // ---------------------------------------------------------------------------
 
-    bool bInited;                              /**< False by default, Initialize() sets it to true. */
+    bool bInited;                              /**< False by default, Initialize() sets it to true, Deinitialize() sets it to false. */
+    int  nRefCount;                            /**< 0 by default, Initialize() increases it by 1, Deinitialize() decreases it by 1. */
     int  nMode;                                /**< Current mode: 0 if normal, 1 is error, 2 is success (EOn()/EOff()/SOn()/SOff()/RestoreDefaultColors() set this). */
     int  nIndentValue;                         /**< Current indentation. */ 
     bool bFirstWriteTextCallAfterWriteTextLn;  /**< True if we are at the 1st no-new-line-print after a new-line-print. */
@@ -168,6 +169,7 @@ int CConsole::CConsoleImpl::nSuccessOutCount = 0;   /**< Total OLn() during succ
 CConsole::CConsoleImpl::CConsoleImpl()
 {
     hConsole = NULL;
+    nRefCount = 0;
     bInited = false;
     bErrorsAlwaysOn = true;
     nIndentValue = 0;
@@ -564,7 +566,7 @@ CConsole& CConsole::getConsoleInstance(const char* loggerModule)
 */
 void CConsole::SetLoggingState(const char* loggerModule, bool state)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
     
     const size_t sizeOfLoggerModuleNameBuffer = sizeof(char)*(strlen(loggerModule)+1);
@@ -601,7 +603,7 @@ void CConsole::SetLoggingState(const char* loggerModule, bool state)
 */
 void CConsole::SetErrorsAlwaysOn(bool state)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->bErrorsAlwaysOn = state;
@@ -609,11 +611,14 @@ void CConsole::SetErrorsAlwaysOn(bool state)
 
 
 /**
-    This creates actually the console window.
+    This creates actually the console window if not created yet.
+    An internal reference count is also increased by 1. Reference count explanation is described at Deinitialize().
 */
 void CConsole::Initialize(const char* title, bool createLogFile)
 {
 #ifdef CCONSOLE_IS_ENABLED
+    consoleImpl->nRefCount++;
+
     if ( !consoleImpl )
     {
         try
@@ -626,8 +631,13 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         }
     }
 
-    if ( !consoleImpl->bInited && AllocConsole() )
+    if ( !(consoleImpl->bInited) )
     {
+        if ( !AllocConsole() )
+        {
+            return;
+        }
+
         // hack to let logs of this initialize function pass thru 
         const std::string prevLoggerName = consoleImpl->loggerName;
         consoleImpl->loggerName = "";
@@ -664,31 +674,50 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             }
         }
 
-        SOLn(" > CConsole has been initialized!");
+        SOLn(" > CConsole has been initialized with title: %s, refcount: %d!", title, consoleImpl->nRefCount);
 
         // now we get rid of our hack
         consoleImpl->loggerName = prevLoggerName;
 
-    } // if
+    }
+    else
+    {
+        SOLn(" > CConsole is already initialized, new refcount: %d!", consoleImpl->nRefCount);
+    }
 #endif
 } // Initialize()
 
 
 /**
-    This deletes the console window.
-    After this, Initialize() can be used again.
+    If reference count is positive, it is decreased by 1.
+    If reference count reaches 0, console window gets deleted.
+    With this simple reference counting, different parts/layers of a process can invoke Initialize() and Deinitialize()
+    at their initializing and deinitializing functions, without the fear of 1 single Deinitialize() call might ruin
+    the console functionality of other parts of the process.
 */
 void CConsole::Deinitialize()
 {
 #ifdef CCONSOLE_IS_ENABLED     
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
-    OLn("CConsole::Deinitialize()");
-    // consoleImpl->enabledModules.clear() when reference counter reaches 0!
-    this->~CConsole();
+    consoleImpl->nRefCount--;
+    OLn("CConsole::Deinitialize() new refcount: %d", consoleImpl->nRefCount);
+    if ( consoleImpl->nRefCount == 0 )
+    {
+        this->~CConsole();
+    }
 #endif
 } // Deinitialize()
+
+
+/**
+    Tells if console window is already initialized.
+    @return True if console window is initialized, false otherwise.
+*/
+bool CConsole::isInitialized() const {
+    return consoleImpl && (consoleImpl->bInited);
+}
 
 
 /**
@@ -696,7 +725,7 @@ void CConsole::Deinitialize()
 */
 int CConsole::getIndent() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->nIndentValue;
@@ -709,7 +738,7 @@ int CConsole::getIndent() const
 void CConsole::SetIndent(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->nIndentValue = value;
@@ -725,7 +754,7 @@ void CConsole::SetIndent(int value)
 void CConsole::Indent()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->nIndentValue += CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
@@ -739,7 +768,7 @@ void CConsole::Indent()
 void CConsole::IndentBy(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->nIndentValue += value;
@@ -755,7 +784,7 @@ void CConsole::IndentBy(int value)
 void CConsole::Outdent()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->nIndentValue -= CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
@@ -771,7 +800,7 @@ void CConsole::Outdent()
 void CConsole::OutdentBy(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->nIndentValue -= value;
@@ -787,7 +816,7 @@ void CConsole::OutdentBy(int value)
 void CConsole::LoadColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     SetFGColor(consoleImpl->dLastFGColor, consoleImpl->dLastBoolsColorHtml);
@@ -805,7 +834,7 @@ void CConsole::LoadColors()
 void CConsole::SaveColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->SaveColorsExCaller();
@@ -819,7 +848,7 @@ void CConsole::SaveColors()
 void CConsole::RestoreDefaultColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->RestoreDefaultColorsExCaller();
@@ -832,7 +861,7 @@ void CConsole::RestoreDefaultColors()
 */
 WORD CConsole::getFGColor() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->clrFG;
@@ -844,7 +873,7 @@ WORD CConsole::getFGColor() const
 */
 const char* CConsole::getFGColorHtml() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return "#DDBEEF";
 
     return consoleImpl->clrFGhtml;
@@ -857,7 +886,7 @@ const char* CConsole::getFGColorHtml() const
 void CConsole::SetFGColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->clrFG = clr;
@@ -873,7 +902,7 @@ void CConsole::SetFGColor(WORD clr, const char* html)
 */
 WORD CConsole::getBGColor() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->clrBG;
@@ -886,7 +915,7 @@ WORD CConsole::getBGColor() const
 void CConsole::SetBGColor(WORD clr)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->clrBG = clr;
@@ -900,7 +929,7 @@ void CConsole::SetBGColor(WORD clr)
 */
 WORD CConsole::getIntsColor() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->clrInts;
@@ -912,7 +941,7 @@ WORD CConsole::getIntsColor() const
 */
 const char* CConsole::getIntsColorHtml() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return "#DDBEEF";
 
     return consoleImpl->clrIntsHtml;
@@ -925,7 +954,7 @@ const char* CConsole::getIntsColorHtml() const
 void CConsole::SetIntsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->clrInts = clr;
@@ -940,7 +969,7 @@ void CConsole::SetIntsColor(WORD clr, const char* html)
 */
 WORD CConsole::getStringsColor() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->clrStrings;
@@ -952,7 +981,7 @@ WORD CConsole::getStringsColor() const
 */
 const char* CConsole::getStringsColorHtml() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return "#DDBEEF";
 
     return consoleImpl->clrStringsHtml;
@@ -965,7 +994,7 @@ const char* CConsole::getStringsColorHtml() const
 void CConsole::SetStringsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->clrStrings = clr;
@@ -980,7 +1009,7 @@ void CConsole::SetStringsColor(WORD clr, const char* html)
 */
 WORD CConsole::getFloatsColor() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->clrFloats;
@@ -992,7 +1021,7 @@ WORD CConsole::getFloatsColor() const
 */
 const char* CConsole::getFloatsColorHtml() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return "#DDBEEF";
 
     return consoleImpl->clrFloatsHtml;
@@ -1005,7 +1034,7 @@ const char* CConsole::getFloatsColorHtml() const
 void CConsole::SetFloatsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->clrFloats = clr;
@@ -1020,7 +1049,7 @@ void CConsole::SetFloatsColor(WORD clr, const char* html)
 */
 WORD CConsole::getBoolsColor() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->clrBools;
@@ -1032,7 +1061,7 @@ WORD CConsole::getBoolsColor() const
 */
 const char* CConsole::getBoolsColorHtml() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return "#DDBEEF";
 
     return consoleImpl->clrBoolsHtml;
@@ -1045,7 +1074,7 @@ const char* CConsole::getBoolsColorHtml() const
 void CConsole::SetBoolsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->clrBools = clr;
@@ -1061,7 +1090,7 @@ void CConsole::SetBoolsColor(WORD clr, const char* html)
 void CConsole::O(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1078,7 +1107,7 @@ void CConsole::O(const char* text, ...)
 void CConsole::OLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1095,7 +1124,7 @@ void CConsole::OLn(const char* text, ...)
 void CConsole::OI()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     Indent();
@@ -1109,7 +1138,7 @@ void CConsole::OI()
 void CConsole::OIO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1127,7 +1156,7 @@ void CConsole::OIO(const char* text, ...)
 void CConsole::OIOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1145,7 +1174,7 @@ void CConsole::OIOLn(const char* text, ...)
 void CConsole::OLnOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1163,7 +1192,7 @@ void CConsole::OLnOI(const char* text, ...)
 void CConsole::OIb(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     IndentBy(value);
@@ -1177,7 +1206,7 @@ void CConsole::OIb(int value)
 void CConsole::OO()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     Outdent();
@@ -1191,7 +1220,7 @@ void CConsole::OO()
 void CConsole::OOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1209,7 +1238,7 @@ void CConsole::OOO(const char* text, ...)
 void CConsole::OOOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1227,7 +1256,7 @@ void CConsole::OOOLn(const char* text, ...)
 void CConsole::OLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1245,7 +1274,7 @@ void CConsole::OLnOO(const char* text, ...)
 void CConsole::OOb(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     OutdentBy(value);
@@ -1259,7 +1288,7 @@ void CConsole::OOb(int value)
 void CConsole::OIOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1279,7 +1308,7 @@ void CConsole::OIOLnOO(const char* text, ...)
 void CConsole::L(int n)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     for (int i = 0; i < n; i++)
@@ -1295,7 +1324,7 @@ void CConsole::L(int n)
 void CConsole::NOn()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     consoleImpl->nMode = 0;
@@ -1310,7 +1339,7 @@ void CConsole::NOn()
 void CConsole::EOn()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     if ( consoleImpl->nMode == 1 )
@@ -1334,7 +1363,7 @@ void CConsole::EOn()
 void CConsole::EOff()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     NOn();
@@ -1348,7 +1377,7 @@ void CConsole::EOff()
 void CConsole::SOn()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     if ( consoleImpl->nMode == 2 )
@@ -1372,7 +1401,7 @@ void CConsole::SOn()
 void CConsole::SOff()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     NOn();
@@ -1386,7 +1415,7 @@ void CConsole::SOff()
 void CConsole::SO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1405,7 +1434,7 @@ void CConsole::SO(const char* text, ...)
 void CConsole::SOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1424,7 +1453,7 @@ void CConsole::SOLn(const char* text, ...)
 void CConsole::EO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1443,7 +1472,7 @@ void CConsole::EO(const char* text, ...)
 void CConsole::EOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1462,7 +1491,7 @@ void CConsole::EOLn(const char* text, ...)
 void CConsole::OISO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1482,7 +1511,7 @@ void CConsole::OISO(const char* text, ...)
 void CConsole::OISOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1502,7 +1531,7 @@ void CConsole::OISOLn(const char* text, ...)
 void CConsole::OOSO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1522,7 +1551,7 @@ void CConsole::OOSO(const char* text, ...)
 void CConsole::OOSOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1542,7 +1571,7 @@ void CConsole::OOSOLn(const char* text, ...)
 void CConsole::OIEO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1562,7 +1591,7 @@ void CConsole::OIEO(const char* text, ...)
 void CConsole::OIEOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1582,7 +1611,7 @@ void CConsole::OIEOLn(const char* text, ...)
 void CConsole::OOEO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1602,7 +1631,7 @@ void CConsole::OOEO(const char* text, ...)
 void CConsole::OOEOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1622,7 +1651,7 @@ void CConsole::OOEOLn(const char* text, ...)
 void CConsole::SOOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1642,7 +1671,7 @@ void CConsole::SOOI(const char* text, ...)
 void CConsole::SOLnOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1662,7 +1691,7 @@ void CConsole::SOLnOI(const char* text, ...)
 void CConsole::SOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1682,7 +1711,7 @@ void CConsole::SOOO(const char* text, ...)
 void CConsole::SOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1702,7 +1731,7 @@ void CConsole::SOLnOO(const char* text, ...)
 void CConsole::EOOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1722,7 +1751,7 @@ void CConsole::EOOI(const char* text, ...)
 void CConsole::EOLnOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1742,7 +1771,7 @@ void CConsole::EOLnOI(const char* text, ...)
 void CConsole::EOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1762,7 +1791,7 @@ void CConsole::EOOO(const char* text, ...)
 void CConsole::EOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1782,7 +1811,7 @@ void CConsole::EOLnOO(const char* text, ...)
 void CConsole::OISOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1803,7 +1832,7 @@ void CConsole::OISOOO(const char* text, ...)
 void CConsole::OISOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1824,7 +1853,7 @@ void CConsole::OISOLnOO(const char* text, ...)
 void CConsole::OIEOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1845,7 +1874,7 @@ void CConsole::OIEOOO(const char* text, ...)
 void CConsole::OIEOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     va_list list;
@@ -1865,7 +1894,7 @@ void CConsole::OIEOLnOO(const char* text, ...)
 */
 int CConsole::getErrorOutsCount() const
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->nErrorOutCount;
@@ -1877,7 +1906,7 @@ int CConsole::getErrorOutsCount() const
 */
 int CConsole::getSuccessOutsCount() const    
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return 0;
 
     return consoleImpl->nSuccessOutCount;
@@ -1886,7 +1915,7 @@ int CConsole::getSuccessOutsCount() const
 
 CConsole& CConsole::operator<<(const char* text)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return *this;
 
     if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
@@ -1898,7 +1927,7 @@ CConsole& CConsole::operator<<(const char* text)
 
 CConsole& CConsole::operator<<(const bool& b)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return *this;
 
     if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
@@ -1910,7 +1939,7 @@ CConsole& CConsole::operator<<(const bool& b)
 
 CConsole& CConsole::operator<<(const int& n)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return *this;
 
     if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
@@ -1922,7 +1951,7 @@ CConsole& CConsole::operator<<(const int& n)
 
 CConsole& CConsole::operator<<(const float& f)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return *this;
 
     if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
@@ -1934,7 +1963,7 @@ CConsole& CConsole::operator<<(const float& f)
 
 CConsole& CConsole::operator<<(const CConsole::FormatSignal& fs)
 {
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return *this;
 
     switch (fs)
@@ -1979,7 +2008,7 @@ CConsole& CConsole::operator= (const CConsole&)
 CConsole::~CConsole()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !consoleImpl || !consoleImpl->bInited )
+    if ( !isInitialized() )
         return;
 
     OLn("CConsole::~CConsole() LAST MESSAGE, BYE!");
