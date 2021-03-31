@@ -1,5 +1,19 @@
 # Console
-Console class for logging purpose on Windows and hopefully later on Linux.
+Console class for logging purpose on Windows and hopefully later on Linux.  
+I wouldn't write this from scratch today, but back in 2011 I wanted to write a logger class that has function with variable number of parameter count, so I made this.  
+Today I would rather just use a nice open-source product maintained by someone else. But since I wrote this, I'm still using it!
+
+**Features**
+ - logging to console window (currently only on Windows);
+ - logging to html file, with same indentations and colors as to console window;
+ - per-module log filtering: you can decide what a module is (e.g. a class) and add per-module (e.g. per-class) usage of CConsole::SetLoggingState() with your module string to turn on/off logging.
+
+**Missing Features**
+ - no log file rotation implemented, the last logging session overwrites the log file;
+ - no log forwarding to external server;
+ - no actions to be executed when a specific log appears.
+
+Currently I'm not planning to implement the missing features.
 
 <p align="center">
   Example: Windows console window during demo run:<br/>
