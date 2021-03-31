@@ -15,6 +15,8 @@ Today I would rather just use a nice open-source product maintained by someone e
 
 Currently I'm not planning to implement the missing features.
 
+**Requires**: [PFL v1.0](https://github.com/proof88/PFL).
+
 <p align="center">
   Example: Windows console window during demo run:<br/>
   <a href="cconsole-shot-01.PNG" target="_blank"><img src="cconsole-shot-01.PNG" width="475" height="301"></a>
