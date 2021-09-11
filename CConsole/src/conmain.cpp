@@ -35,7 +35,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
 
     con.OLn("Ez sima szoveg.");
     con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz szam: %d", 5);
+    con.OLn("Ez egesz elojeles szam: %d", 5);
+    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
     con.OLn("Ez valos szam: %f", 5.0f);
     con.OLn("Ez logikai: %b", false);
     con.OLn("");
@@ -43,7 +44,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.EOn();
     con.OLn("Ez sima szoveg.");
     con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz szam: %d", 5);
+    con.OLn("Ez egesz elojeles szam: %d", 5);
+    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
     con.OLn("Ez valos szam: %f", 5.0f);
     con.OLn("Ez logikai: %b", false);
     con.OLn("");
@@ -51,7 +53,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.OLn("Es most normal mode vissza...");
     con.OLn("Ez sima szoveg.");
     con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz szam: %d", 5);
+    con.OLn("Ez egesz elojeles szam: %d", 5);
+    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
     con.OLn("Ez valos szam: %f", 5.0f);
     con.OLn("Ez logikai: %b", false);
     con.OLn("");
@@ -65,7 +68,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
 
     con.OLn("Ez sima szoveg.");
     con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz szam: %d", 5);
+    con.OLn("Ez egesz elojeles szam: %d", 5);
+    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
     con.OLn("Ez valos szam: %f", 5.0f);
     con.OLn("Ez logikai: %b", false);
     con.OLn("");
@@ -73,7 +77,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.EOn();
     con.OLn("Ez sima szoveg.");
     con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz szam: %d", 5);
+    con.OLn("Ez egesz elojeles szam: %d", 5);
+    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
     con.OLn("Ez valos szam: %f", 5.0f);
     con.OLn("Ez logikai: %b", false);
     con.OLn("");
@@ -81,7 +86,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.OLn("Es most normal mode vissza...");
     con.OLn("Ez sima szoveg.");
     con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz szam: %d", 5);
+    con.OLn("Ez egesz elojeles szam: %d", 5);
+    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
     con.OLn("Ez valos szam: %f", 5.0f);
     con.OLn("Ez logikai: %b", false);
     con.OLn("");

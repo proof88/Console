@@ -130,7 +130,9 @@ private:
     void ImmediateWriteBool(
         CConsole* pCaller, bool b);              /**< Directly writes formatted boolean value to the console. */
     void ImmediateWriteInt(
-        CConsole* pCaller, int n);               /**< Directly writes formatted integer value to the console. */
+        CConsole* pCaller, int n);               /**< Directly writes formatted signed integer value to the console. */
+    void ImmediateWriteUInt(
+        CConsole* pCaller, unsigned int n);      /**< Directly writes formatted unsigned integer value to the console. */
     void ImmediateWriteFloat(
         CConsole* pCaller, float f);             /**< Directly writes formatted floating-point value to the console. */
     
@@ -297,7 +299,7 @@ void CConsole::CConsoleImpl::ImmediateWriteBool(CConsole* pCaller, bool l)
 
 
 /**
-    Directly writes formatted integer value to the console.
+    Directly writes formatted signed integer value to the console.
     Used by WriteFormattedTextEx() and operator<<()s.
 */
 void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
@@ -315,6 +317,27 @@ void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
     pCaller->SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteInt()
+
+
+/**
+    Directly writes formatted unsigned integer value to the console.
+    Used by WriteFormattedTextEx() and operator<<()s.
+*/
+void CConsole::CConsoleImpl::ImmediateWriteUInt(CConsole* pCaller, unsigned int n)
+{
+#ifdef CCONSOLE_IS_ENABLED
+    if ( !canWeWriteBasedOnFilterSettings() )
+        return;
+
+    oldClrFG = clrFG;
+    pCaller->SetFGColor(clrInts);
+    sprintf(vmi, "%u", n);
+    WriteConsoleA(hConsole, vmi, strlen(vmi), &wrt, 0);
+    if ( bAllowLogFile )
+        fLog << "<font color=\"#" << clrIntsHtml << "\">" << vmi << "</font>";
+    pCaller->SetFGColor(oldClrFG);
+#endif
+} // ImmediateWriteUInt()
 
 
 /**
@@ -391,6 +414,7 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
 #ifdef CCONSOLE_IS_ENABLED
     const char *p, *r;
     int   e;
+    unsigned int ue;
     bool  l;
     float f;                                                                            
 
@@ -434,6 +458,12 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
                     {
                         e = va_arg(list, int);
                         ImmediateWriteInt(pCaller,e);
+                        continue;
+                    }
+                case 'u':
+                    {
+                        ue = va_arg(list, unsigned int);
+                        ImmediateWriteUInt(pCaller,ue);
                         continue;
                     }
                 case 'b':
