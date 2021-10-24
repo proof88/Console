@@ -11,13 +11,14 @@
 
 #include <stdio.h> 
 #include <stdlib.h>
-#include "../../../PFL/PFL/PFL.h"
 
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <set>
 #include <string>
 
+#include "../../../PFL/PFL/PFL.h"
 
 // WINAPI header include just for the FOREGROUND_XXX and WORD macros and console API functions
 #ifndef WIN32_LEAN_AND_MEAN
@@ -687,20 +688,30 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         consoleImpl->bAllowLogFile = createLogFile;
         if ( createLogFile )
         {
-            consoleImpl->fLog.open("log.html");
-            if ( consoleImpl->fLog.fail() )
+            const auto time = std::time(nullptr);
+            char fLogFilename[100];
+            if ( 0 == std::strftime(fLogFilename, sizeof(fLogFilename), "log_%Y-%m-%d_%H-%M-%S.html", std::gmtime(&time)) )
             {
                 consoleImpl->bAllowLogFile = false;
-                EOLn("ERROR: Couldn't open output html for writing!");
+                EOLn("ERROR: Couldn't generate file name!");
             }
             else
             {
-                consoleImpl->fLog << "<html>" << endl;
-                consoleImpl->fLog << "<head>" << endl;
-                consoleImpl->fLog << "<title>" << title << "</title>" << endl;
-                consoleImpl->fLog << "</head>" << endl;
-                consoleImpl->fLog << "<body bgcolor=\"#1D1D1D\" text=\"#DDDDDD\">" << endl;
-                consoleImpl->fLog << "<font face=\"Courier\" size=\"2\">" << endl;
+                consoleImpl->fLog.open(fLogFilename);
+                if ( consoleImpl->fLog.fail() )
+                {
+                    consoleImpl->bAllowLogFile = false;
+                    EOLn("ERROR: Couldn't open output html for writing!");
+                }
+                else
+                {
+                    consoleImpl->fLog << "<html>" << endl;
+                    consoleImpl->fLog << "<head>" << endl;
+                    consoleImpl->fLog << "<title>" << title << "</title>" << endl;
+                    consoleImpl->fLog << "</head>" << endl;
+                    consoleImpl->fLog << "<body bgcolor=\"#1D1D1D\" text=\"#DDDDDD\">" << endl;
+                    consoleImpl->fLog << "<font face=\"Courier\" size=\"2\">" << endl;
+                }
             }
         }
 
