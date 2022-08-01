@@ -926,8 +926,8 @@ void CConsole::CConsoleImpl::SOn()
 
     nMode = 2;
     SaveColors();
-    SetFGColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY, "00FF00");
-    SetStringsColor(FOREGROUND_GREEN, "00DD00");
+    SetFGColor(FOREGROUND_GREEN, "00DD00");
+    SetStringsColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY, "00FF00");
     SetFloatsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
     SetIntsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
     SetBoolsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
@@ -1943,7 +1943,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             }
         }
 
-        consoleImpl->SOLn(" > CConsole has been initialized with title: %s, refcount: %d!", title, consoleImpl->nRefCount);
+        consoleImpl->SOLn(" > CConsole (%s) has been initialized with title: %s, refcount: %d!", CCONSOLE_VERSION, title, consoleImpl->nRefCount);
 
         // now we get rid of our hack
         consoleImpl->loggerName = prevLoggerName;
