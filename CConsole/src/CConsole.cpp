@@ -2455,7 +2455,6 @@ void CConsole::OIO(const char* text, ...)
         return;
 
     va_list list;
-    consoleImpl->OI();
     va_start(list, text);
     consoleImpl->OIO(text, list);
     va_end(list);
@@ -2475,7 +2474,6 @@ void CConsole::OIOLn(const char* text, ...)
         return;
 
     va_list list;
-    consoleImpl->OI();
     va_start(list, text);
     consoleImpl->OIOLn(text, list);
     va_end(list);
@@ -2498,7 +2496,6 @@ void CConsole::OLnOI(const char* text, ...)
     va_start(list, text);
     consoleImpl->OLnOI(text, list);
     va_end(list);
-    consoleImpl->OI();
 #endif
 } // OLnOI()
 
