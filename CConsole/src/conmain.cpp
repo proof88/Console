@@ -33,30 +33,34 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.L();
     con.OLn("");
 
-    con.OLn("Ez sima szoveg.");
-    con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz elojeles szam: %d", 5);
-    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
-    con.OLn("Ez valos szam: %f", 5.0f);
-    con.OLn("Ez logikai: %b", false);
+    con.OLn("Simple text.");
+    con.OLn("%s", "This is a string.");
+    con.OLn("Signed integral value: %d", -5);
+    con.OLn("Unsigned integral value: %u", 5);
+    con.OLn("Floating point value: %f", 5.30215f);
+    con.OLn("Boolean value: %b", false);
     con.OLn("");
-    con.OLn("Es most error-mode...");
+
+    con.OLn("Switching to error-mode now...");
     con.EOn();
-    con.OLn("Ez sima szoveg.");
-    con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz elojeles szam: %d", 5);
-    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
-    con.OLn("Ez valos szam: %f", 5.0f);
-    con.OLn("Ez logikai: %b", false);
+
+    con.OLn("Simple text.");
+    con.OLn("%s", "This is a string.");
+    con.OLn("Signed integral value: %d", -5);
+    con.OLn("Unsigned integral value: %u", 5);
+    con.OLn("Floating point value: %f", 5.30215f);
+    con.OLn("Boolean value: %b", false);
     con.OLn("");
+
+    con.OLn("Switching back to normal mode now ...");
     con.EOff();
-    con.OLn("Es most normal mode vissza...");
-    con.OLn("Ez sima szoveg.");
-    con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz elojeles szam: %d", 5);
-    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
-    con.OLn("Ez valos szam: %f", 5.0f);
-    con.OLn("Ez logikai: %b", false);
+    
+    con.OLn("Simple text.");
+    con.OLn("%s", "This is a string.");
+    con.OLn("Signed integral value: %d", -5);
+    con.OLn("Unsigned integral value: %u", 5);
+    con.OLn("Floating point value: %f", 5.30215f);
+    con.OLn("Boolean value: %b", false);
     con.OLn("");
 
     con.SetFGColor( FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE, "999999" );
@@ -64,40 +68,44 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.SetStringsColor( FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY, "FFFFFF" );
     con.SetFloatsColor( FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
     con.SetBoolsColor( FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "00FFFF" );
-    con.OLn("Szinek atallitva...");
+    con.OLn("Colors changed!");
 
-    con.OLn("Ez sima szoveg.");
-    con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz elojeles szam: %d", 5);
-    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
-    con.OLn("Ez valos szam: %f", 5.0f);
-    con.OLn("Ez logikai: %b", false);
+    con.OLn("Simple text.");
+    con.OLn("%s", "This is a string.");
+    con.OLn("Signed integral value: %d", -5);
+    con.OLn("Unsigned integral value: %u", 5);
+    con.OLn("Floating point value: %f", 5.30215f);
+    con.OLn("Boolean value: %b", false);
     con.OLn("");
-    con.OLn("Es most error-mode...");
+
+    con.OLn("Switching to error-mode now...");
     con.EOn();
-    con.OLn("Ez sima szoveg.");
-    con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz elojeles szam: %d", 5);
-    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
-    con.OLn("Ez valos szam: %f", 5.0f);
-    con.OLn("Ez logikai: %b", false);
+
+    con.OLn("Simple text.");
+    con.OLn("%s", "This is a string.");
+    con.OLn("Signed integral value: %d", -5);
+    con.OLn("Unsigned integral value: %u", 5);
+    con.OLn("Floating point value: %f", 5.30215f);
+    con.OLn("Boolean value: %b", false);
     con.OLn("");
+
+    con.OLn("Switching back to normal mode now ...");
     con.EOff();
-    con.OLn("Es most normal mode vissza...");
-    con.OLn("Ez sima szoveg.");
-    con.OLn("%s", "Ez egy string.");
-    con.OLn("Ez egesz elojeles szam: %d", 5);
-    con.OLn("Ez egesz elojel nelkuli szam: %u", 5);
-    con.OLn("Ez valos szam: %f", 5.0f);
-    con.OLn("Ez logikai: %b", false);
+    
+    con.OLn("Simple text.");
+    con.OLn("%s", "This is a string.");
+    con.OLn("Signed integral value: %d", -5);
+    con.OLn("Unsigned integral value: %u", 5);
+    con.OLn("Floating point value: %f", 5.30215f);
+    con.OLn("Boolean value: %b", false);
     con.OLn("");
     
-    con << "Ez most operatoros string, ez meg boolean: " << false << ", ez meg szam: " << 16 << CConsole::FormatSignal::NL;
-    con << "Ez meg egy uj sor mar.";
-    con << " Ez ugyanaz a sor meg." << CConsole::FormatSignal::NL;
-    con << "Itt meg float van: " << 4.67f << CConsole::FormatSignal::NL;
-    con << CConsole::FormatSignal::E << "Ez most error mode, " << CConsole::FormatSignal::S << "de ez mar success." << CConsole::FormatSignal::NL;
-    con << CConsole::FormatSignal::N << "Most ismet normal mode." << CConsole::FormatSignal::NL;
+    con << "Using operator<<, this is a string, and this is a boolean: " << false << ", this is an integer: " << 16 << CConsole::FormatSignal::NL;
+    con << "This is already a new line";
+    con << " , and this is still the same line" << CConsole::FormatSignal::NL;
+    con << "This is a new line with a float: " << 4.67f << CConsole::FormatSignal::NL;
+    con << CConsole::FormatSignal::E << "This is error mode " << CConsole::FormatSignal::S << "but this is success mode." << CConsole::FormatSignal::NL;
+    con << CConsole::FormatSignal::N << "This is normal mode again." << CConsole::FormatSignal::NL;
 
     system("pause");
 

@@ -32,6 +32,7 @@ typedef unsigned short      WORD;
 /**
     Class handling console window.
     Intentionally pimpl instead of abstract interface, please don't try to change.
+    Thread-safe.
 */
 
 class CConsole

@@ -15,6 +15,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <set>
 #include <string>
 
@@ -47,16 +48,119 @@
 
 using namespace std;
 
-
+static std::mutex mainMutex;  // did not want to put this into CConsoleImpl because then IsInitialized() could not be protected by this mutex when impl is not yet existing
 
 /*
    CConsole::CConsoleImpl
    ###########################################################################
+   Not thread-safe, but not public anyway.
+   Only CConsole uses it, and CConsole is thread-safe.
 */
 
 class CConsole::CConsoleImpl
 {
 public:
+    void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
+    void SetErrorsAlwaysOn(bool state);                          /**< Sets errors always appear irrespective of logging state of current logger module. */
+
+    int  getIndent() const;       /**< Gets the current indentation. */
+    void SetIndent(int value);    /**< Sets the current indentation. */
+    void Indent();                /**< Increases indentation. */
+    void IndentBy(int value);     /**< Increases indentation by the given value. */
+    void Outdent();               /**< Decreases indentation. */
+    void OutdentBy(int value);    /**< Decreases indentation by the given value. */
+
+    void LoadColors();            /**< Loads previously saved colors. */
+    void SaveColors();            /**< Saves current colors. */
+    void RestoreDefaultColors();  /**< Restores default colors. */
+
+    WORD        getFGColor() const;            /**< Gets foreground color. */
+    const char* getFGColorHtml() const;        /**< Gets html foreground color. */
+    void        SetFGColor(
+        WORD clr, const char* html = NULL);   /**< Sets foreground color. */
+    WORD        getBGColor() const;            /**< Gets background color. */
+    void        SetBGColor(WORD clr);          /**< Sets background color. */
+
+    WORD        getIntsColor() const;          /**< Gets ints color. */
+    const char* getIntsColorHtml() const;      /**< Gets ints html color. */
+    void        SetIntsColor(
+        WORD clr, const char* html = NULL);   /**< Sets ints color. */
+
+    WORD        getStringsColor() const;       /**< Gets strings color. */
+    const char* getStringsColorHtml() const;   /**< Gets strings html color. */
+    void        SetStringsColor(
+        WORD clr, const char* html = NULL);   /**< Sets strings color. */
+
+    WORD        getFloatsColor() const;        /**< Gets floats color. */
+    const char* getFloatsColorHtml() const;    /**< Gets floats html color. */
+    void        SetFloatsColor(
+        WORD clr, const char* html = NULL);   /**< Sets floats color. */
+
+    WORD        getBoolsColor() const;         /**< Gets bools color. */
+    const char* getBoolsColorHtml() const;     /**< Gets bools html color. */
+    void        SetBoolsColor(
+        WORD clr, const char* html = NULL);   /**< Sets bools color. */
+
+    void O(const char* text, va_list list);       /**< Prints text to console. */
+    void OLn(const char* text, va_list list);     /**< Prints text to console and adds a new line. */
+    void OLn(const char* text, ...);              /**< Prints text to console and adds a new line. */
+    void OI();                           /**< Indent(). */
+    void OIO(const char* text, va_list list);     /**< OI() + O(text). */
+    void OIOLn(const char* text, va_list list);   /**< OI() + OLn(text). */
+    void OLnOI(const char* text, va_list list);   /**< OLn(text) + OI(). */
+    void OIb(int value);                 /**< IndentBy(). */
+    void OO();                           /**< Outdent(). */
+    void OOO(const char* text, va_list list);     /**< OO() + O(text). */
+    void OOOLn(const char* text, va_list list);   /**< OO() + OLn(text). */
+    void OLnOO(const char* text, va_list list);   /**< OLn(text) + OO(). */
+    void OOb(int value);                 /**< OutdentBy(). */
+    void OIOLnOO(const char* text, va_list list); /**< OI() + OLn(text) + OO(). */
+    void L(int n = 20);                  /**< Prints line to console and adds a new line. */
+
+    void NOn();                          /**< Normal-mode on. */
+    void EOn();                          /**< Error-mode on. */
+    void EOff();                         /**< Error-mode  off. */
+    void SOn();                          /**< Success-mode on. */
+    void SOff();                         /**< Success-mode off. */
+
+    void SO(const char* text, va_list list);      /**< SOn() + O(text) + SOff(). */
+    void SOLn(const char* text, va_list list);    /**< SOn() + OLn(text) + SOff(). */
+    void SOLn(const char* text, ...);             /**< SOn() + OLn(text) + SOff(). */
+    void EO(const char* text, va_list list);      /**< EOn() + O(text) + EOff(). */
+    void EOLn(const char* text, va_list list);    /**< EOn() + OLn(text) + EOff(). */
+    void EOLn(const char* text, ...);             /**< EOn() + OLn(text) + EOff(). */
+
+    void OISO(const char* text, va_list list);    /**< OI() + SO(text). */
+    void OISOLn(const char* text, va_list list);  /**< OI() + SOLn(text). */
+    void OOSO(const char* text, va_list list);    /**< OO() + SO(text). */
+    void OOSOLn(const char* text, va_list list);  /**< OO() + SOLn(text). */
+    void OIEO(const char* text, va_list list);    /**< OI() + EO(text). */
+    void OIEOLn(const char* text, va_list list);  /**< OI() + EOLn(text). */
+    void OOEO(const char* text, va_list list);    /**< OO() + EO(text). */
+    void OOEOLn(const char* text, va_list list);  /**< OO() + EOLn(text). */
+
+    void SOOI(const char* text, va_list list);    /**< SO(text) + OI(). */
+    void SOLnOI(const char* text, va_list list);  /**< SOLn(text) + OI(). */
+    void SOOO(const char* text, va_list list);    /**< SO(text) + OO(). */
+    void SOLnOO(const char* text, va_list list);  /**< SOLn(text) + OO(). */
+    void EOOI(const char* text, va_list list);    /**< EO(text) + OI(). */
+    void EOLnOI(const char* text, va_list list);  /**< EOLn(text) + OI(). */
+    void EOOO(const char* text, va_list list);    /**< EO(text) + OO(). */
+    void EOLnOO(const char* text, va_list list);  /**< EOLn(text) + OO(). */
+
+    void OISOOO(const char* text, va_list list);    /**< OI() + SO(text) + OO(). */
+    void OISOLnOO(const char* text, va_list list);  /**< OI() + SOLn(text) + OO(). */
+    void OIEOOO(const char* text, va_list list);    /**< OI() + EO(text) + OO(). */
+    void OIEOLnOO(const char* text, va_list list);  /**< OI() + EOLn(text) + OO(). */
+
+    int getErrorOutsCount() const;      /**< Gets total count of printouts-with-newline during error-mode. */
+    int getSuccessOutsCount() const;    /**< Gets total count of printouts-with-newline during success-mode. */
+
+    CConsole::CConsoleImpl& operator<<(const char* text);
+    CConsole::CConsoleImpl& operator<<(const bool& b);
+    CConsole::CConsoleImpl& operator<<(const int& n);
+    CConsole::CConsoleImpl& operator<<(const float& f);
+    CConsole::CConsoleImpl& operator<<(const CConsole::FormatSignal& fs);
 
 protected:
 
@@ -126,28 +230,18 @@ private:
 
     bool canWeWriteBasedOnFilterSettings() const;
 
-    void ImmediateWriteString(
-        CConsole* pCaller, const char* text);    /**< Directly writes formatted string value to the console. */
-    void ImmediateWriteBool(
-        CConsole* pCaller, bool b);              /**< Directly writes formatted boolean value to the console. */
-    void ImmediateWriteInt(
-        CConsole* pCaller, int n);               /**< Directly writes formatted signed integer value to the console. */
-    void ImmediateWriteUInt(
-        CConsole* pCaller, unsigned int n);      /**< Directly writes formatted unsigned integer value to the console. */
-    void ImmediateWriteFloat(
-        CConsole* pCaller, float f);             /**< Directly writes formatted floating-point value to the console. */
+    void ImmediateWriteString(const char* text);    /**< Directly writes formatted string value to the console. */
+    void ImmediateWriteBool(bool b);                /**< Directly writes formatted boolean value to the console. */
+    void ImmediateWriteInt(int n);                  /**< Directly writes formatted signed integer value to the console. */
+    void ImmediateWriteUInt(unsigned int n);        /**< Directly writes formatted unsigned integer value to the console. */
+    void ImmediateWriteFloat(float f);              /**< Directly writes formatted floating-point value to the console. */
     
-    void WriteText(const char* text);            /**< Directly writes unformatted text to the console. */
+    void WriteText(const char* text);             /**< Directly writes unformatted text to the console. */
     void WriteFormattedTextEx(
-        CConsole* pCaller,
-        const char* fmt, va_list list);          /**< Writes text to the console. */
+        const char* fmt, va_list list);           /**< Writes text to the console. */
 
     void WriteFormattedTextExCaller(
-        CConsole* pCaller,
         const char* fmt, va_list list, bool nl);  /**< Writes text to the console. */
-
-    void SaveColorsExCaller();            /**< Saves current colors. */
-    void RestoreDefaultColorsExCaller();  /**< Restores default colors. */
 
     friend class CConsole;
 
@@ -156,6 +250,1178 @@ private:
 
 
 // ############################### PUBLIC ################################
+
+
+/**
+    Sets logging on or off for the given logger module.
+    By default logging is NOT enabled for any logger modules.
+    Initially logging can be done only with empty loggerModule name.
+    For specific modules that invoke getConsoleInstance() with their module name, logging
+    state must be enabled in order to make their logs actually appear.
+
+    @param loggerModule Name of the logger who wants to change its logging state.
+                        If this is "4LLM0DUL3S", the given state turns full verbose logging on or off, regardless of any other logging state.
+    @param state True to enable logging of the loggerModule, false to disable.
+*/
+void CConsole::CConsoleImpl::SetLoggingState(const char* loggerModule, bool state)
+{
+    if ( !bInited )
+        return;
+
+    const size_t sizeOfLoggerModuleNameBuffer = sizeof(char) * (strlen(loggerModule) + 1);
+    char* const newNameLoggerModule = (char* const)malloc(sizeOfLoggerModuleNameBuffer);
+    if (newNameLoggerModule == nullptr)
+        return;
+
+    strncpy_s(newNameLoggerModule, sizeOfLoggerModuleNameBuffer, loggerModule, sizeOfLoggerModuleNameBuffer);
+    PFL::strClr(newNameLoggerModule);
+    if (strlen(newNameLoggerModule) == 0)
+    {
+        free(newNameLoggerModule);
+        return;
+    }
+    free(newNameLoggerModule);
+
+    if (state)
+    {
+        enabledModules.insert(loggerModule);
+    }
+    else
+    {
+        enabledModules.erase(loggerModule);
+    }
+} // SetLoggingState 
+
+
+/**
+    Sets errors always appear irrespective of logging state of current logger module.
+    Default value is true.
+
+    @param state True will make module error logs appear even if module logging state is false for the current module.
+                 False will let module errors logs be controlled purely by module logging states.
+*/
+void CConsole::CConsoleImpl::SetErrorsAlwaysOn(bool state)
+{
+    if ( !bInited )
+        return;
+
+    bErrorsAlwaysOn = state;
+} // SetErrorsAlwaysOn()
+
+
+/**
+    Gets the current indentation.
+*/
+int CConsole::CConsoleImpl::getIndent() const
+{
+    if ( !bInited )
+        return 0;
+
+    return nIndentValue;
+} // getIndent()
+
+
+/**
+    Sets the current indentation.
+*/
+void CConsole::CConsoleImpl::SetIndent(int value)
+{
+    if ( !bInited )
+        return;
+
+    nIndentValue = value;
+    if (nIndentValue < 0)
+        nIndentValue = 0;
+} // SetIndent()
+
+
+/**
+    Increases indentation.
+*/
+void CConsole::CConsoleImpl::Indent()
+{
+    if ( !bInited )
+        return;
+
+    nIndentValue += CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
+} // Indent()
+
+
+/**
+    Increases indentation by the given value.
+*/
+void CConsole::CConsoleImpl::IndentBy(int value)
+{
+    if ( !bInited )
+        return;
+
+    nIndentValue += value;
+    if (nIndentValue < 0)
+        nIndentValue = 0;
+} // IndentBy()
+
+
+/**
+    Decreases indentation.
+*/
+void CConsole::CConsoleImpl::Outdent()
+{
+    if ( !bInited )
+        return;
+
+    nIndentValue -= CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
+    if (nIndentValue < 0)
+        nIndentValue = 0;
+} // Outdent()
+
+
+/**
+    Decreases indentation by the given value.
+*/
+void CConsole::CConsoleImpl::OutdentBy(int value)
+{
+    if ( !bInited )
+        return;
+
+    nIndentValue -= value;
+    if (nIndentValue < 0)
+        nIndentValue = 0;
+} // OutdentBy()
+
+
+/**
+    Loads previously saved colors.
+*/
+void CConsole::CConsoleImpl::LoadColors()
+{
+    if ( !bInited )
+        return;
+
+    SetFGColor(dLastFGColor, dLastBoolsColorHtml);
+    SetStringsColor(dLastStringsColor, dLastStringsColorHtml);
+    SetFloatsColor(dLastFloatsColor, dLastFloatsColorHtml);
+    SetIntsColor(dLastIntsColor, dLastIntsColorHtml);
+    SetBoolsColor(dLastBoolsColor, dLastBoolsColorHtml);
+} // LoadColors()
+
+
+/**
+    Saves current colors.
+*/
+void CConsole::CConsoleImpl::SaveColors()
+{
+#ifdef CCONSOLE_IS_ENABLED
+    if (!bInited)
+        return;
+
+    dLastFGColor = clrFG;
+    dLastStringsColor = clrStrings;
+    dLastFloatsColor = clrFloats;
+    dLastIntsColor = clrInts;
+    dLastBoolsColor = clrBools;
+    strcpy(dLastFGColorHtml, clrFGhtml);
+    strcpy(dLastStringsColorHtml, clrStringsHtml);
+    strcpy(dLastFloatsColorHtml, clrFloatsHtml);
+    strcpy(dLastIntsColorHtml, clrIntsHtml);
+    strcpy(dLastBoolsColorHtml, clrBoolsHtml);
+#endif
+}
+
+
+/**
+    Restores default colors.
+*/
+void CConsole::CConsoleImpl::RestoreDefaultColors()
+{
+#ifdef CCONSOLE_IS_ENABLED
+    if (!bInited)
+        return;
+
+    nMode = 0;
+    clrFG = CConsoleImpl::CCONSOLE_DEF_CLR_FG;
+    clrBG = 0;
+    clrInts = clrFG;
+    clrFloats = clrFG;
+    clrStrings = clrFG;
+    clrBools = clrFG;
+    strcpy(clrFGhtml, "999999");
+    strcpy(clrIntsHtml, clrFGhtml);
+    strcpy(clrFloatsHtml, clrFGhtml);
+    strcpy(clrStringsHtml, clrFGhtml);
+    strcpy(clrBoolsHtml, clrFGhtml);
+#endif
+}
+
+
+/**
+    Gets foreground color.
+*/
+WORD CConsole::CConsoleImpl::getFGColor() const
+{
+    if ( !bInited )
+        return 0;
+
+    return clrFG;
+} // getFGColor()
+
+
+/**
+    Gets html foreground color.
+*/
+const char* CConsole::CConsoleImpl::getFGColorHtml() const
+{
+    if ( !bInited )
+        return "#DDBEEF";
+
+    return clrFGhtml;
+} // getFGColorHtml()
+
+
+/**
+    Sets foreground color.
+*/
+void CConsole::CConsoleImpl::SetFGColor(WORD clr, const char* html)
+{
+    if ( !bInited )
+        return;
+
+    clrFG = clr;
+    SetConsoleTextAttribute(hConsole, clrFG | clrBG);
+    if (html)
+        strcpy_s(clrFGhtml, CConsoleImpl::HTML_CLR_S, html);
+} // SetFGColor()
+
+
+/**
+    Gets background color.
+*/
+WORD CConsole::CConsoleImpl::getBGColor() const
+{
+    if ( !bInited )
+        return 0;
+
+    return clrBG;
+} // getBGColor()
+
+
+/**
+    Sets background color.
+*/
+void CConsole::CConsoleImpl::SetBGColor(WORD clr)
+{
+    if ( !bInited )
+        return;
+
+    clrBG = clr;
+    SetConsoleTextAttribute(hConsole, clrFG | clrBG);
+} // SetBGColor()
+
+
+/**
+    Gets ints color.
+*/
+WORD CConsole::CConsoleImpl::getIntsColor() const
+{
+    if ( !bInited )
+        return 0;
+
+    return clrInts;
+} // getIntsColor()
+
+
+/**
+    Gets ints html color.
+*/
+const char* CConsole::CConsoleImpl::getIntsColorHtml() const
+{
+    if ( !bInited )
+        return "#DDBEEF";
+
+    return clrIntsHtml;
+} // getIntsColorHtml()
+
+
+/**
+    Sets ints color.
+*/
+void CConsole::CConsoleImpl::SetIntsColor(WORD clr, const char* html)
+{
+    if ( !bInited )
+        return;
+
+    clrInts = clr;
+    if (html)
+        strcpy_s(clrIntsHtml, CConsoleImpl::HTML_CLR_S, html);
+} // SetIntsColor()
+
+
+/**
+    Gets strings color.
+*/
+WORD CConsole::CConsoleImpl::getStringsColor() const
+{
+    if ( !bInited )
+        return 0;
+
+    return clrStrings;
+} // getStringsColor()
+
+
+/**
+    Gets strings html color.
+*/
+const char* CConsole::CConsoleImpl::getStringsColorHtml() const
+{
+    if ( !bInited )
+        return "#DDBEEF";
+
+    return clrStringsHtml;
+} // getStringsColorHtml()
+
+
+/**
+    Sets strings color.
+*/
+void CConsole::CConsoleImpl::SetStringsColor(WORD clr, const char* html)
+{
+    if ( !bInited )
+        return;
+
+    clrStrings = clr;
+    if (html)
+        strcpy_s(clrStringsHtml, CConsoleImpl::HTML_CLR_S, html);
+} // SetStringsColor()
+
+
+/**
+    Gets floats color.
+*/
+WORD CConsole::CConsoleImpl::getFloatsColor() const
+{
+    if ( !bInited )
+        return 0;
+
+    return clrFloats;
+} // getFloatsColor()
+
+
+/**
+    Gets floats html color.
+*/
+const char* CConsole::CConsoleImpl::getFloatsColorHtml() const
+{
+    if ( !bInited )
+        return "#DDBEEF";
+
+    return clrFloatsHtml;
+} // getFloatsColorHtml()
+
+
+/**
+    Sets floats color.
+*/
+void CConsole::CConsoleImpl::SetFloatsColor(WORD clr, const char* html)
+{
+    if ( !bInited )
+        return;
+
+    clrFloats = clr;
+    if (html)
+        strcpy_s(clrFloatsHtml, CConsoleImpl::HTML_CLR_S, html);
+} // SetFloatsColor()
+
+
+/**
+    Gets bools color.
+*/
+WORD CConsole::CConsoleImpl::getBoolsColor() const
+{
+    if ( !bInited )
+        return 0;
+
+    return clrBools;
+} // getBoolsColor()
+
+
+/**
+    Gets bools html color.
+*/
+const char* CConsole::CConsoleImpl::getBoolsColorHtml() const
+{
+    if ( !bInited )
+        return "#DDBEEF";
+
+    return clrBoolsHtml;
+} // getBoolsColorHtml()
+
+
+/**
+    Sets bools color.
+*/
+void CConsole::CConsoleImpl::SetBoolsColor(WORD clr, const char* html)
+{
+    if ( !bInited )
+        return;
+
+    clrBools = clr;
+    if (html)
+        strcpy_s(clrBoolsHtml, CConsoleImpl::HTML_CLR_S, html);
+} // SetBoolsColor()
+
+
+/**
+    Prints text to console.
+*/
+void CConsole::CConsoleImpl::O(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    WriteFormattedTextExCaller(text, list, false);
+} // O()
+
+
+/**
+    Prints text to console and adds a new line.
+*/
+void CConsole::CConsoleImpl::OLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    WriteFormattedTextExCaller(text, list, true);
+} // OLn()
+
+
+/**
+    Prints text to console and adds a new line.
+*/
+void CConsole::CConsoleImpl::OLn(const char* text, ...)
+{
+    if (!bInited)
+        return;
+
+    va_list list;
+    va_start(list, text);
+    OLn(text, list);
+    va_end(list);
+} // OLn()
+
+
+/**
+    Indent().
+*/
+void CConsole::CConsoleImpl::OI()
+{
+    if ( !bInited )
+        return;
+
+    Indent();
+} // OI()
+
+
+/**
+    OI() + O(text).
+*/
+void CConsole::CConsoleImpl::OIO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    WriteFormattedTextExCaller(text, list, false);
+} // OI()
+
+
+/**
+    OI() + OLn(text).
+*/
+void CConsole::CConsoleImpl::OIOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    WriteFormattedTextExCaller(text, list, true);
+} // OIOLn()
+
+
+/**
+    OLn(text) + OI().
+*/
+void CConsole::CConsoleImpl::OLnOI(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    WriteFormattedTextExCaller(text, list, true);
+    OI();
+} // OLnOI()
+
+
+/**
+    IndentBy().
+*/
+void CConsole::CConsoleImpl::OIb(int value)
+{
+    if ( !bInited )
+        return;
+
+    IndentBy(value);
+} // OIb()
+
+
+/**
+    Outdent().
+*/
+void CConsole::CConsoleImpl::OO()
+{
+    if ( !bInited )
+        return;
+
+    Outdent();
+} // OO()
+
+
+/**
+    OO() + O(text).
+*/
+void CConsole::CConsoleImpl::OOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OO();
+    WriteFormattedTextExCaller(text, list, false);
+} // OO()
+
+
+/**
+    OO() + OLn(text).
+*/
+void CConsole::CConsoleImpl::OOOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OO();
+    WriteFormattedTextExCaller(text, list, true);
+} // OOLn()
+
+
+/**
+    OLn(text) + OO().
+*/
+void CConsole::CConsoleImpl::OLnOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    WriteFormattedTextExCaller(text, list, true);
+    OO();
+} // OLnOI()
+
+
+/**
+    OutdentBy().
+*/
+void CConsole::CConsoleImpl::OOb(int value)
+{
+    if ( !bInited )
+        return;
+
+    OutdentBy(value);
+} // OOb()
+
+
+/**
+    OI() + OLn(text) + OO().
+*/
+void CConsole::CConsoleImpl::OIOLnOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    WriteFormattedTextExCaller(text, list, true);
+    OO();
+}
+
+
+/**
+    Prints line to console and adds a new line.
+    @param n How many times the "-=" chars should be repeated.
+*/
+void CConsole::CConsoleImpl::L(int n)
+{
+    if ( !bInited )
+        return;
+
+    for (int i = 0; i < n; i++)
+        WriteText("-=");
+    WriteText("\n\r");
+} // L()
+
+
+/**
+    Normal-mode on.
+*/
+void CConsole::CConsoleImpl::NOn()
+{
+    if ( !bInited )
+        return;
+
+    nMode = 0;
+    LoadColors();
+} // NOn()
+
+
+/**
+    Error-mode on.
+*/
+void CConsole::CConsoleImpl::EOn()
+{
+    if ( !bInited )
+        return;
+
+    if (nMode == 1)
+        return;
+    else if (nMode == 2)
+        SOff();
+
+    nMode = 1;
+    SaveColors();
+    SetFGColor(FOREGROUND_RED | FOREGROUND_INTENSITY, "FF0000");
+    SetStringsColor(FOREGROUND_RED | FOREGROUND_GREEN, "DDDD00");
+    SetFloatsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
+    SetIntsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
+    SetBoolsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
+} // EOn()
+
+
+/**
+    Error-mode  off.
+*/
+void CConsole::CConsoleImpl::EOff()
+{
+    if ( !bInited )
+        return;
+
+    NOn();
+} // EOff()
+
+
+/**
+    Success-mode on.
+*/
+void CConsole::CConsoleImpl::SOn()
+{
+    if ( !bInited )
+        return;
+
+    if (nMode == 2)
+        return;
+    else if (nMode == 1)
+        EOff();
+
+    nMode = 2;
+    SaveColors();
+    SetFGColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY, "00FF00");
+    SetStringsColor(FOREGROUND_GREEN, "00DD00");
+    SetFloatsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
+    SetIntsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
+    SetBoolsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
+} // SOn()
+
+
+/**
+    Success-mode off.
+*/
+void CConsole::CConsoleImpl::SOff()
+{
+    if ( !bInited )
+        return;
+
+    NOn();
+} // SOff()
+
+
+/**
+    SOn() + O(text) + SOff().
+*/
+void CConsole::CConsoleImpl::SO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    SOn();
+    WriteFormattedTextExCaller(text, list, false);
+    SOff();
+} // SO()
+
+
+/**
+    SOn() + OLn(text) + SOff().
+*/
+void CConsole::CConsoleImpl::SOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    SOn();
+    WriteFormattedTextExCaller(text, list, true);
+    SOff();
+} // SOln()
+
+
+/**
+    SOn() + OLn(text) + SOff().
+*/
+void CConsole::CConsoleImpl::SOLn(const char* text, ...)
+{
+    if (!bInited)
+        return;
+
+    va_list list;
+    va_start(list, text);
+    SOLn(text, list);
+    va_end(list);
+} // SOLn()
+
+
+/**
+    EOn() + O(text) + EOff().
+*/
+void CConsole::CConsoleImpl::EO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    EOn();
+    WriteFormattedTextExCaller(text, list, false);
+    EOff();
+} // EO()
+
+
+/**
+    EOn() + OLn(text) + EOff().
+*/
+void CConsole::CConsoleImpl::EOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    EOn();
+    WriteFormattedTextExCaller(text, list, true);
+    EOff();
+} // EOLn()
+
+
+/**
+    EOn() + OLn(text) + EOff().
+*/
+void CConsole::CConsoleImpl::EOLn(const char* text, ...)
+{
+    if (!bInited)
+        return;
+
+    va_list list;
+    va_start(list, text);
+    EOLn(text, list);
+    va_end(list);
+} // SOLn()
+
+
+/**
+    OI() + SO(text).
+*/
+void CConsole::CConsoleImpl::OISO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    SOn();
+    WriteFormattedTextExCaller(text, list, false);
+    SOff();
+} // OISO()
+
+
+/**
+    OI() + SOLn(text).
+*/
+void CConsole::CConsoleImpl::OISOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    SOn();
+    WriteFormattedTextExCaller(text, list, true);
+    SOff();
+} // OISOLn()
+
+
+/**
+    OO() + SO(text).
+*/
+void CConsole::CConsoleImpl::OOSO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OO();
+    SOn();
+    WriteFormattedTextExCaller(text, list, false);
+    SOff();
+} // OOSO()
+
+
+/**
+    OO() + SOLn(text).
+*/
+void CConsole::CConsoleImpl::OOSOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OO();
+    SOn();
+    WriteFormattedTextExCaller(text, list, true);
+    SOff();
+} // OOSOLn()
+
+
+/**
+    OI() + EO(text).
+*/
+void CConsole::CConsoleImpl::OIEO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    EOn();
+    WriteFormattedTextExCaller(text, list, false);
+    EOff();
+} // OIEO()
+
+
+/**
+    OI() + EOLn(text).
+*/
+void CConsole::CConsoleImpl::OIEOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    EOn();
+    WriteFormattedTextExCaller(text, list, true);
+    EOff();
+} // OIEOLn()
+
+
+/**
+    OO() + EO(text).
+*/
+void CConsole::CConsoleImpl::OOEO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OO();
+    EOn();
+    WriteFormattedTextExCaller(text, list, false);
+    EOff();
+} // OOEO()
+
+
+/**
+    OO() + EOLn(text).
+*/
+void CConsole::CConsoleImpl::OOEOLn(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OO();
+    EOn();
+    WriteFormattedTextExCaller(text, list, true);
+    EOff();
+} // OOEOLn()
+
+
+/**
+    SO(text) + OI().
+*/
+void CConsole::CConsoleImpl::SOOI(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    SOn();
+    WriteFormattedTextExCaller(text, list, false);
+    SOff();
+    OI();
+} // SOOI()
+
+
+/**
+    SOLn(text) + OI().
+*/
+void CConsole::CConsoleImpl::SOLnOI(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    SOn();
+    WriteFormattedTextExCaller(text, list, true);
+    SOff();
+    OI();
+} // SOLnOI()
+
+
+/**
+    SO(text) + OO().
+*/
+void CConsole::CConsoleImpl::SOOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    SOn();
+    WriteFormattedTextExCaller(text, list, false);
+    SOff();
+    OO();
+} // SOOO()
+
+
+/**
+    SOLn(text) + OO().
+*/
+void CConsole::CConsoleImpl::SOLnOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    SOn();
+    WriteFormattedTextExCaller(text, list, true);
+    SOff();
+    OO();
+} // SOLnOO()
+
+
+/**
+    EO(text) + OI().
+*/
+void CConsole::CConsoleImpl::EOOI(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    EOn();
+    WriteFormattedTextExCaller(text, list, false);
+    EOff();
+    OI();
+} // EOOI()
+
+
+/**
+    EOLn(text) + OI().
+*/
+void CConsole::CConsoleImpl::EOLnOI(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    EOn();
+    WriteFormattedTextExCaller(text, list, true);
+    EOff();
+    OI();
+} // EOLnOI()
+
+
+/**
+    EO(text) + OO().
+*/
+void CConsole::CConsoleImpl::EOOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    EOn();
+    WriteFormattedTextExCaller(text, list, false);
+    EOff();
+    OO();
+} // EOOO()
+
+
+/**
+    EOLn(text) + OO().
+*/
+void CConsole::CConsoleImpl::EOLnOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    EOn();
+    WriteFormattedTextExCaller(text, list, true);
+    EOff();
+    OO();
+} // EOLnOO()
+
+
+/**
+    OI() + SO(text) + OO().
+*/
+void CConsole::CConsoleImpl::OISOOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    SOn();
+    WriteFormattedTextExCaller(text, list, false);
+    SOff();
+    OO();
+} // OISOOO
+
+
+/**
+    OI() + SOLn(text) + OO().
+*/
+void CConsole::CConsoleImpl::OISOLnOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    SOn();
+    WriteFormattedTextExCaller(text, list, true);
+    SOff();
+    OO();
+} // OISOLnOO
+
+
+/**
+    OI() + EO(text) + OO().
+*/
+void CConsole::CConsoleImpl::OIEOOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    EOn();
+    WriteFormattedTextExCaller(text, list, false);
+    EOff();
+    OO();
+} // OIEOOO
+
+
+/**
+    OI() + EOLn(text) + OO().
+*/
+void CConsole::CConsoleImpl::OIEOLnOO(const char* text, va_list list)
+{
+    if ( !bInited )
+        return;
+
+    OI();
+    EOn();
+    WriteFormattedTextExCaller(text, list, true);
+    EOff();
+    OO();
+} // OIEOLnOO
+
+
+/**
+    Gets total count of printouts-with-newline during error-mode.
+*/
+int CConsole::CConsoleImpl::getErrorOutsCount() const
+{
+    if ( !bInited )
+        return 0;
+
+    return nErrorOutCount;
+} // getErrorOutsCount()
+
+
+/**
+    Gets total count of printouts-with-newline during success-mode.
+*/
+int CConsole::CConsoleImpl::getSuccessOutsCount() const
+{
+    if ( !bInited )
+        return 0;
+
+    return nSuccessOutCount;
+} // getSuccessOutsCount()
+
+
+CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const char* text)
+{
+    if ( !bInited )
+        return *this;
+
+    if (bFirstWriteTextCallAfterWriteTextLn)
+        for (int i = 0; i < nIndentValue; i++)
+            WriteText(" ");
+    ImmediateWriteString(text);
+    return *this;
+} // operator<<()
+
+CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const bool& b)
+{
+    if ( !bInited )
+        return *this;
+
+    if (bFirstWriteTextCallAfterWriteTextLn)
+        for (int i = 0; i < nIndentValue; i++)
+            WriteText(" ");
+    ImmediateWriteBool(b);
+    return *this;
+} // operator<<()
+
+CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const int& n)
+{
+    if ( !bInited )
+        return *this;
+
+    if (bFirstWriteTextCallAfterWriteTextLn)
+        for (int i = 0; i < nIndentValue; i++)
+            WriteText(" ");
+    ImmediateWriteInt(n);
+    return *this;
+} // operator<<()
+
+CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const float& f)
+{
+    if ( !bInited )
+        return *this;
+
+    if (bFirstWriteTextCallAfterWriteTextLn)
+        for (int i = 0; i < nIndentValue; i++)
+            WriteText(" ");
+    ImmediateWriteFloat(f);
+    return *this;
+} // operator<<()
+
+CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const CConsole::FormatSignal& fs)
+{
+    if ( !bInited )
+        return *this;
+
+    switch (fs)
+    {
+    case NL: WriteText("\n\r"); break;
+    case  S: SOn(); break;
+    case  E: EOn(); break;
+    default: NOn(); break;
+    }
+    return *this;
+} // operator<<()
 
 
 // ############################## PROTECTED ##############################
@@ -187,8 +1453,8 @@ CConsole::CConsoleImpl::CConsoleImpl()
     memset(dLastIntsColorHtml, 0, HTML_CLR_S);
     memset(dLastFloatsColorHtml, 0, HTML_CLR_S);
     memset(dLastBoolsColorHtml, 0, HTML_CLR_S);
-    RestoreDefaultColorsExCaller();
-    SaveColorsExCaller();
+    RestoreDefaultColors();
+    SaveColors();
 } // CConsoleImpl(...)
 
 
@@ -252,7 +1518,7 @@ bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings() const
     Directly writes formatted string value to the console.
     Used by WriteFormattedTextEx() and operator<<()s.
 */
-void CConsole::CConsoleImpl::ImmediateWriteString(CConsole* pCaller, const char* text)
+void CConsole::CConsoleImpl::ImmediateWriteString(const char* text)
 {
 #ifdef CCONSOLE_IS_ENABLED
     if ( !canWeWriteBasedOnFilterSettings() )
@@ -262,19 +1528,19 @@ void CConsole::CConsoleImpl::ImmediateWriteString(CConsole* pCaller, const char*
     //oldClrFGhtml = clrFGhtml;
     if ( text != NULL )
     {
-        pCaller->SetFGColor(clrStrings);                             
+        SetFGColor(clrStrings);                             
         WriteConsoleA(hConsole, text, strlen(text), &wrt, 0);
         if ( bAllowLogFile )
             fLog << "<font color=\"#" << clrStringsHtml << "\">" << text << "</font>";
     }
     else
     {
-        pCaller->SetFGColor(oldClrFG);
+        SetFGColor(oldClrFG);
         WriteConsoleA(hConsole, "NULL", 4, &wrt, 0);
         if ( bAllowLogFile )
             fLog << "<font color=\"#" << clrStringsHtml << "\">NULL</font>";
     }
-    pCaller->SetFGColor(oldClrFG);
+    SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteString()
 
@@ -283,18 +1549,18 @@ void CConsole::CConsoleImpl::ImmediateWriteString(CConsole* pCaller, const char*
     Directly writes formatted boolean value to the console.
     Used by WriteFormattedTextEx() and operator<<()s.
 */
-void CConsole::CConsoleImpl::ImmediateWriteBool(CConsole* pCaller, bool l)
+void CConsole::CConsoleImpl::ImmediateWriteBool(bool l)
 {
 #ifdef CCONSOLE_IS_ENABLED
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
     oldClrFG = clrFG;
-    pCaller->SetFGColor(clrBools);
+    SetFGColor(clrBools);
     WriteConsoleA(hConsole, l ? "true" : "false", l ? 4 : 5, &wrt, 0);
     if ( bAllowLogFile )
         fLog << "<font color=\"#" << clrBoolsHtml << "\">" << (l ? "true" : "false") << "</font>";
-    pCaller->SetFGColor(oldClrFG);
+    SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteBool()
 
@@ -303,19 +1569,19 @@ void CConsole::CConsoleImpl::ImmediateWriteBool(CConsole* pCaller, bool l)
     Directly writes formatted signed integer value to the console.
     Used by WriteFormattedTextEx() and operator<<()s.
 */
-void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
+void CConsole::CConsoleImpl::ImmediateWriteInt(int n)
 {
 #ifdef CCONSOLE_IS_ENABLED
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
     oldClrFG = clrFG;
-    pCaller->SetFGColor(clrInts);
+    SetFGColor(clrInts);
     itoa(n,vmi,10);
     WriteConsoleA(hConsole, vmi, strlen(vmi), &wrt, 0);
     if ( bAllowLogFile )
         fLog << "<font color=\"#" << clrIntsHtml << "\">" << vmi << "</font>";
-    pCaller->SetFGColor(oldClrFG);
+    SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteInt()
 
@@ -324,19 +1590,19 @@ void CConsole::CConsoleImpl::ImmediateWriteInt(CConsole* pCaller, int n)
     Directly writes formatted unsigned integer value to the console.
     Used by WriteFormattedTextEx() and operator<<()s.
 */
-void CConsole::CConsoleImpl::ImmediateWriteUInt(CConsole* pCaller, unsigned int n)
+void CConsole::CConsoleImpl::ImmediateWriteUInt(unsigned int n)
 {
 #ifdef CCONSOLE_IS_ENABLED
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
     oldClrFG = clrFG;
-    pCaller->SetFGColor(clrInts);
+    SetFGColor(clrInts);
     sprintf(vmi, "%u", n);
     WriteConsoleA(hConsole, vmi, strlen(vmi), &wrt, 0);
     if ( bAllowLogFile )
         fLog << "<font color=\"#" << clrIntsHtml << "\">" << vmi << "</font>";
-    pCaller->SetFGColor(oldClrFG);
+    SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteUInt()
 
@@ -345,7 +1611,7 @@ void CConsole::CConsoleImpl::ImmediateWriteUInt(CConsole* pCaller, unsigned int 
     Directly writes formatted floating-point value to the console.
     Used by WriteFormattedTextEx() and operator<<()s.
 */
-void CConsole::CConsoleImpl::ImmediateWriteFloat(CConsole* pCaller, float f)
+void CConsole::CConsoleImpl::ImmediateWriteFloat(float f)
 {
 #ifdef CCONSOLE_IS_ENABLED
     if ( !canWeWriteBasedOnFilterSettings() )
@@ -353,22 +1619,32 @@ void CConsole::CConsoleImpl::ImmediateWriteFloat(CConsole* pCaller, float f)
 
     oldClrFG = clrFG;
     sprintf(vmi, "%0.4f", f);
+    const size_t nOriginalLen = strlen(vmi);
     size_t newlen = strlen(vmi);
     for (size_t blah = strlen(vmi); (vmi[blah] == '0') || (vmi[blah] == 0); blah--)
+    {
         newlen--;
+    }
+    if (newlen < nOriginalLen)
+    {
+        newlen++;
+    }
     vmi[newlen] = '\0';
-    pCaller->SetFGColor(clrFloats);
+
+    SetFGColor(clrFloats);
     WriteConsoleA(hConsole, vmi, newlen, &wrt, 0);
-    if ( bAllowLogFile )
+    if (bAllowLogFile)
+    {
         fLog << "<font color=\"#" << clrFloatsHtml << "\">" << vmi << "</font>";
-    pCaller->SetFGColor(oldClrFG);
+    }
+    SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteFloat()
 
 
 /**
     Directly writes unformatted text to the console.
-    Used by WriteFormattedTextEx(), WriteFormattedTextExCaller() and operator<<()s.
+    Used by WriteFormattedTextEx(), WriteFormattedTextExCaller(), L() and operator<<()s.
 */
 void CConsole::CConsoleImpl::WriteText(const char* text)
 {
@@ -410,7 +1686,7 @@ void CConsole::CConsoleImpl::WriteText(const char* text)
     @param fmt  The text to be printed to the console, may contain formatting chars.
     @param list The list of arguments passed from the calling higher-level function.
 */
-void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char* fmt, va_list list)
+void CConsole::CConsoleImpl::WriteFormattedTextEx(const char* fmt, va_list list)
 {
 #ifdef CCONSOLE_IS_ENABLED
     const char *p, *r;
@@ -430,7 +1706,7 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
 
     if ( strstr(fmt, "%") == NULL )
     {
-        pCaller->SetFGColor(oldClrFG);
+        SetFGColor(oldClrFG);
         WriteText(fmt);
     }
     else
@@ -439,7 +1715,7 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
         {
             if ( *p != '%' )
             {
-                pCaller->SetFGColor(oldClrFG);
+                SetFGColor(oldClrFG);
                 WriteConsoleA(hConsole, p, sizeof(char), &wrt, 0);
                 if ( bAllowLogFile )
                     fLog << *p;
@@ -451,37 +1727,37 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
                 case 's':
                     {
                         r = va_arg(list, char*);
-                        ImmediateWriteString(pCaller, r);
+                        ImmediateWriteString(r);
                         continue;
                     }
                 case 'i':
                 case 'd':
                     {
                         e = va_arg(list, int);
-                        ImmediateWriteInt(pCaller,e);
+                        ImmediateWriteInt(e);
                         continue;
                     }
                 case 'u':
                     {
                         ue = va_arg(list, unsigned int);
-                        ImmediateWriteUInt(pCaller,ue);
+                        ImmediateWriteUInt(ue);
                         continue;
                     }
                 case 'b':
                     {
                         l = va_arg(list, bool);
-                        ImmediateWriteBool(pCaller,l);
+                        ImmediateWriteBool(l);
                         continue;
                     }
                 case 'f':
                     {                                                        
                         f = (float) va_arg(list, double);
-                        ImmediateWriteFloat(pCaller,f);
+                        ImmediateWriteFloat(f);
                         continue;
                     }
                 default:
                     {
-                        pCaller->SetFGColor(oldClrFG);
+                        SetFGColor(oldClrFG);
                         WriteConsoleA(hConsole, p, sizeof(char), &wrt, 0);
                         if ( bAllowLogFile )
                             fLog << *p;
@@ -491,7 +1767,7 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
         } // for p
     } // else
     bFirstWriteTextCallAfterWriteTextLn = ( strstr(fmt, "\n") != NULL );
-    pCaller->SetFGColor(oldClrFG);
+    SetFGColor(oldClrFG);
     if ( bAllowLogFile )
         if ( nMode != 0 )
             fLog << "</font>";
@@ -506,12 +1782,12 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(CConsole* pCaller, const char*
     @param list The list of arguments passed from the calling higher-level function.
     @param nl   Whether to print newline after the text or not. This also activates success/error counting.
 */
-void CConsole::CConsoleImpl::WriteFormattedTextExCaller(CConsole* pCaller, const char* fmt, va_list list, bool nl)
+void CConsole::CConsoleImpl::WriteFormattedTextExCaller(const char* fmt, va_list list, bool nl)
 {           
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    WriteFormattedTextEx(pCaller, fmt, list);
+    WriteFormattedTextEx(fmt, list);
     if ( nl )
     {
         WriteText("\n\r");
@@ -521,42 +1797,6 @@ void CConsole::CConsoleImpl::WriteFormattedTextExCaller(CConsole* pCaller, const
             nSuccessOutCount++;
     }
 } // WriteFormattedTextExCaller()
-
-
-void CConsole::CConsoleImpl::SaveColorsExCaller()
-{
-#ifdef CCONSOLE_IS_ENABLED
-    dLastFGColor      = clrFG;
-    dLastStringsColor = clrStrings;
-    dLastFloatsColor  = clrFloats;
-    dLastIntsColor    = clrInts;
-    dLastBoolsColor   = clrBools;
-    strcpy(dLastFGColorHtml, clrFGhtml);
-    strcpy(dLastStringsColorHtml, clrStringsHtml);
-    strcpy(dLastFloatsColorHtml, clrFloatsHtml);
-    strcpy(dLastIntsColorHtml, clrIntsHtml);
-    strcpy(dLastBoolsColorHtml, clrBoolsHtml);
-#endif
-}
-
-
-void CConsole::CConsoleImpl::RestoreDefaultColorsExCaller()
-{
-#ifdef CCONSOLE_IS_ENABLED
-    nMode = 0;
-    clrFG = CConsoleImpl::CCONSOLE_DEF_CLR_FG;
-    clrBG = 0;
-    clrInts    = clrFG;
-    clrFloats  = clrFG;
-    clrStrings = clrFG;
-    clrBools   = clrFG;
-    strcpy(clrFGhtml, "999999");
-    strcpy(clrIntsHtml, clrFGhtml);
-    strcpy(clrFloatsHtml, clrFGhtml);
-    strcpy(clrStringsHtml, clrFGhtml);
-    strcpy(clrBoolsHtml, clrFGhtml);
-#endif
-}
 
 
 /*
@@ -577,6 +1817,8 @@ void CConsole::CConsoleImpl::RestoreDefaultColorsExCaller()
 */
 CConsole& CConsole::getConsoleInstance(const char* loggerModule)
 {
+    std::lock_guard<std::mutex> lock(mainMutex);
+
     if ( consoleInstance.consoleImpl && loggerModule ) {
         consoleInstance.consoleImpl->loggerName = loggerModule;
     }
@@ -597,31 +1839,12 @@ CConsole& CConsole::getConsoleInstance(const char* loggerModule)
 */
 void CConsole::SetLoggingState(const char* loggerModule, bool state)
 {
-    if ( !isInitialized() )
-        return;
-    
-    const size_t sizeOfLoggerModuleNameBuffer = sizeof(char)*(strlen(loggerModule)+1);
-    char* const newNameLoggerModule = (char* const )malloc(sizeOfLoggerModuleNameBuffer);
-    if ( newNameLoggerModule == nullptr )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    strncpy_s(newNameLoggerModule, sizeOfLoggerModuleNameBuffer, loggerModule, sizeOfLoggerModuleNameBuffer);
-    PFL::strClr(newNameLoggerModule);
-    if ( strlen(newNameLoggerModule) == 0 )
-    {
-        free(newNameLoggerModule);
-        return;
-    }
-    free(newNameLoggerModule);
-
-    if ( state )
-    {
-        consoleImpl->enabledModules.insert(loggerModule);
-    }
-    else 
-    {
-        consoleImpl->enabledModules.erase(loggerModule);
-    }
+    consoleImpl->SetLoggingState(loggerModule, state);
 } // SetLoggingState 
 
 
@@ -634,10 +1857,12 @@ void CConsole::SetLoggingState(const char* loggerModule, bool state)
 */
 void CConsole::SetErrorsAlwaysOn(bool state)
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->bErrorsAlwaysOn = state;
+    consoleImpl->SetErrorsAlwaysOn(state);
 } // SetErrorsAlwaysOn()
 
 
@@ -648,7 +1873,7 @@ void CConsole::SetErrorsAlwaysOn(bool state)
 void CConsole::Initialize(const char* title, bool createLogFile)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    consoleImpl->nRefCount++;
+    std::lock_guard<std::mutex> lock(mainMutex);
 
     if ( !consoleImpl )
     {
@@ -661,6 +1886,9 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             return;
         }
     }
+
+    // we need to initialize only once, but refcount always needs to be incremented
+    consoleImpl->nRefCount++;
 
     if ( !(consoleImpl->bInited) )
     {
@@ -684,7 +1912,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             crd.Y = 10000;
             SetConsoleScreenBufferSize(consoleImpl->hConsole, crd);
         }
-        RestoreDefaultColors();
+        consoleImpl->RestoreDefaultColors();
         consoleImpl->bAllowLogFile = createLogFile;
         if ( createLogFile )
         {
@@ -693,7 +1921,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             if ( 0 == std::strftime(fLogFilename, sizeof(fLogFilename), "log_%Y-%m-%d_%H-%M-%S.html", std::gmtime(&time)) )
             {
                 consoleImpl->bAllowLogFile = false;
-                EOLn("ERROR: Couldn't generate file name!");
+                consoleImpl->EOLn("ERROR: Couldn't generate file name!");
             }
             else
             {
@@ -701,7 +1929,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
                 if ( consoleImpl->fLog.fail() )
                 {
                     consoleImpl->bAllowLogFile = false;
-                    EOLn("ERROR: Couldn't open output html for writing!");
+                    consoleImpl->EOLn("ERROR: Couldn't open output html for writing!");
                 }
                 else
                 {
@@ -715,7 +1943,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             }
         }
 
-        SOLn(" > CConsole has been initialized with title: %s, refcount: %d!", title, consoleImpl->nRefCount);
+        consoleImpl->SOLn(" > CConsole has been initialized with title: %s, refcount: %d!", title, consoleImpl->nRefCount);
 
         // now we get rid of our hack
         consoleImpl->loggerName = prevLoggerName;
@@ -723,7 +1951,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
     }
     else
     {
-        SOLn(" > CConsole is already initialized, new refcount: %d!", consoleImpl->nRefCount);
+        consoleImpl->SOLn(" > CConsole is already initialized, new refcount: %d!", consoleImpl->nRefCount);
     }
 #endif
 } // Initialize()
@@ -738,12 +1966,14 @@ void CConsole::Initialize(const char* title, bool createLogFile)
 */
 void CConsole::Deinitialize()
 {
-#ifdef CCONSOLE_IS_ENABLED     
-    if ( !isInitialized() )
+#ifdef CCONSOLE_IS_ENABLED   
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     consoleImpl->nRefCount--;
-    OLn("CConsole::Deinitialize() new refcount: %d", consoleImpl->nRefCount);
+    //TODO consoleImpl->OLn("CConsole::Deinitialize() new refcount: %d", consoleImpl->nRefCount);
     if ( consoleImpl->nRefCount == 0 )
     {
         this->~CConsole();
@@ -756,7 +1986,9 @@ void CConsole::Deinitialize()
     Tells if console window is already initialized.
     @return True if console window is initialized, false otherwise.
 */
-bool CConsole::isInitialized() const {
+bool CConsole::isInitialized() const
+{
+    std::lock_guard<std::mutex> lock(mainMutex);
     return consoleImpl && (consoleImpl->bInited);
 }
 
@@ -766,10 +1998,12 @@ bool CConsole::isInitialized() const {
 */
 int CConsole::getIndent() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->nIndentValue;
+    return consoleImpl->getIndent();
 } // getIndent()
 
 
@@ -779,12 +2013,12 @@ int CConsole::getIndent() const
 void CConsole::SetIndent(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->nIndentValue = value;
-    if ( consoleImpl->nIndentValue < 0 )
-        consoleImpl->nIndentValue = 0;
+    consoleImpl->SetIndent(value);
 #endif
 } // SetIndent()
 
@@ -795,10 +2029,12 @@ void CConsole::SetIndent(int value)
 void CConsole::Indent()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->nIndentValue += CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
+    consoleImpl->Indent();
 #endif
 } // Indent()
 
@@ -809,12 +2045,12 @@ void CConsole::Indent()
 void CConsole::IndentBy(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->nIndentValue += value;
-    if ( consoleImpl->nIndentValue < 0 )
-        consoleImpl->nIndentValue = 0;
+    consoleImpl->IndentBy(value);
 #endif
 } // IndentBy()
 
@@ -825,12 +2061,12 @@ void CConsole::IndentBy(int value)
 void CConsole::Outdent()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->nIndentValue -= CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
-    if ( consoleImpl->nIndentValue < 0 )
-        consoleImpl->nIndentValue = 0;
+    consoleImpl->Outdent();
 #endif
 } // Outdent()
 
@@ -841,12 +2077,12 @@ void CConsole::Outdent()
 void CConsole::OutdentBy(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->nIndentValue -= value;
-    if ( consoleImpl->nIndentValue < 0 )
-        consoleImpl->nIndentValue = 0;
+    consoleImpl->OutdentBy(value);
 #endif
 } // OutdentBy()
 
@@ -857,14 +2093,16 @@ void CConsole::OutdentBy(int value)
 void CConsole::LoadColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    SetFGColor(consoleImpl->dLastFGColor, consoleImpl->dLastBoolsColorHtml);
-    SetStringsColor(consoleImpl->dLastStringsColor, consoleImpl->dLastStringsColorHtml);
-    SetFloatsColor(consoleImpl->dLastFloatsColor, consoleImpl->dLastFloatsColorHtml);
-    SetIntsColor(consoleImpl->dLastIntsColor, consoleImpl->dLastIntsColorHtml);
-    SetBoolsColor(consoleImpl->dLastBoolsColor, consoleImpl->dLastBoolsColorHtml);
+    consoleImpl->SetFGColor(consoleImpl->dLastFGColor, consoleImpl->dLastBoolsColorHtml);
+    consoleImpl->SetStringsColor(consoleImpl->dLastStringsColor, consoleImpl->dLastStringsColorHtml);
+    consoleImpl->SetFloatsColor(consoleImpl->dLastFloatsColor, consoleImpl->dLastFloatsColorHtml);
+    consoleImpl->SetIntsColor(consoleImpl->dLastIntsColor, consoleImpl->dLastIntsColorHtml);
+    consoleImpl->SetBoolsColor(consoleImpl->dLastBoolsColor, consoleImpl->dLastBoolsColorHtml);
 #endif
 } // LoadColors()
 
@@ -875,10 +2113,12 @@ void CConsole::LoadColors()
 void CConsole::SaveColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->SaveColorsExCaller();
+    consoleImpl->SaveColors();
 #endif
 } // SaveColors()
 
@@ -889,10 +2129,12 @@ void CConsole::SaveColors()
 void CConsole::RestoreDefaultColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->RestoreDefaultColorsExCaller();
+    consoleImpl->RestoreDefaultColors();
 #endif
 } // RestoreDefaultColors()
 
@@ -902,10 +2144,12 @@ void CConsole::RestoreDefaultColors()
 */
 WORD CConsole::getFGColor() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->clrFG;
+    return consoleImpl->getFGColor();
 } // getFGColor()
 
 
@@ -914,10 +2158,12 @@ WORD CConsole::getFGColor() const
 */
 const char* CConsole::getFGColorHtml() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return "#DDBEEF";
 
-    return consoleImpl->clrFGhtml;
+    return consoleImpl->getFGColorHtml();
 } // getFGColorHtml()
 
 
@@ -927,13 +2173,12 @@ const char* CConsole::getFGColorHtml() const
 void CConsole::SetFGColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->clrFG = clr;
-    SetConsoleTextAttribute(consoleImpl->hConsole, consoleImpl->clrFG | consoleImpl->clrBG);
-    if ( html )
-        strcpy_s(consoleImpl->clrFGhtml, CConsoleImpl::HTML_CLR_S, html);
+    consoleImpl->SetFGColor(clr, html);
 #endif
 } // SetFGColor()
 
@@ -943,10 +2188,12 @@ void CConsole::SetFGColor(WORD clr, const char* html)
 */
 WORD CConsole::getBGColor() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->clrBG;
+    return consoleImpl->getBGColor();
 } // getBGColor()
 
 
@@ -956,11 +2203,12 @@ WORD CConsole::getBGColor() const
 void CConsole::SetBGColor(WORD clr)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->clrBG = clr;
-    SetConsoleTextAttribute(consoleImpl->hConsole, consoleImpl->clrFG | consoleImpl->clrBG);
+    consoleImpl->SetBGColor(clr);
 #endif
 } // SetBGColor()
 
@@ -970,10 +2218,12 @@ void CConsole::SetBGColor(WORD clr)
 */
 WORD CConsole::getIntsColor() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->clrInts;
+    return consoleImpl->getIntsColor();
 } // getIntsColor()
 
 
@@ -982,10 +2232,12 @@ WORD CConsole::getIntsColor() const
 */
 const char* CConsole::getIntsColorHtml() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return "#DDBEEF";
 
-    return consoleImpl->clrIntsHtml;
+    return consoleImpl->getIntsColorHtml();
 } // getIntsColorHtml()
 
 
@@ -995,12 +2247,12 @@ const char* CConsole::getIntsColorHtml() const
 void CConsole::SetIntsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->clrInts = clr;
-    if ( html )
-        strcpy_s(consoleImpl->clrIntsHtml, CConsoleImpl::HTML_CLR_S, html);
+    consoleImpl->SetIntsColor(clr, html);
 #endif
 } // SetIntsColor()
 
@@ -1010,10 +2262,12 @@ void CConsole::SetIntsColor(WORD clr, const char* html)
 */
 WORD CConsole::getStringsColor() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->clrStrings;
+    return consoleImpl->getStringsColor();
 } // getStringsColor()
 
 
@@ -1022,10 +2276,12 @@ WORD CConsole::getStringsColor() const
 */
 const char* CConsole::getStringsColorHtml() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return "#DDBEEF";
 
-    return consoleImpl->clrStringsHtml;
+    return consoleImpl->getStringsColorHtml();
 } // getStringsColorHtml()
 
 
@@ -1035,12 +2291,12 @@ const char* CConsole::getStringsColorHtml() const
 void CConsole::SetStringsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->clrStrings = clr;
-    if ( html )
-        strcpy_s(consoleImpl->clrStringsHtml, CConsoleImpl::HTML_CLR_S, html);
+    consoleImpl->SetStringsColor(clr, html);
 #endif
 } // SetStringsColor()
 
@@ -1050,10 +2306,12 @@ void CConsole::SetStringsColor(WORD clr, const char* html)
 */
 WORD CConsole::getFloatsColor() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->clrFloats;
+    return consoleImpl->getFloatsColor();
 } // getFloatsColor()
 
 
@@ -1062,10 +2320,12 @@ WORD CConsole::getFloatsColor() const
 */
 const char* CConsole::getFloatsColorHtml() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return "#DDBEEF";
 
-    return consoleImpl->clrFloatsHtml;
+    return consoleImpl->getFloatsColorHtml();
 } // getFloatsColorHtml()
 
 
@@ -1075,12 +2335,12 @@ const char* CConsole::getFloatsColorHtml() const
 void CConsole::SetFloatsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->clrFloats = clr;
-    if ( html )
-        strcpy_s(consoleImpl->clrFloatsHtml, CConsoleImpl::HTML_CLR_S, html);
+    consoleImpl->SetFloatsColor(clr, html);
 #endif
 } // SetFloatsColor()
 
@@ -1090,10 +2350,12 @@ void CConsole::SetFloatsColor(WORD clr, const char* html)
 */
 WORD CConsole::getBoolsColor() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->clrBools;
+    return consoleImpl->getBoolsColor();
 } // getBoolsColor()
 
 
@@ -1102,10 +2364,12 @@ WORD CConsole::getBoolsColor() const
 */
 const char* CConsole::getBoolsColorHtml() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return "#DDBEEF";
 
-    return consoleImpl->clrBoolsHtml;
+    return consoleImpl->getBoolsColorHtml();
 } // getBoolsColorHtml()
 
 
@@ -1115,12 +2379,12 @@ const char* CConsole::getBoolsColorHtml() const
 void CConsole::SetBoolsColor(WORD clr, const char* html)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->clrBools = clr;
-    if ( html )
-        strcpy_s(consoleImpl->clrBoolsHtml, CConsoleImpl::HTML_CLR_S, html);
+    consoleImpl->SetBoolsColor(clr, html);
 #endif
 } // SetBoolsColor()
 
@@ -1131,12 +2395,14 @@ void CConsole::SetBoolsColor(WORD clr, const char* html)
 void CConsole::O(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->O(text, list);
     va_end(list);
 #endif
 } // O()
@@ -1148,12 +2414,14 @@ void CConsole::O(const char* text, ...)
 void CConsole::OLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OLn(text, list);
     va_end(list);
 #endif
 } // OLn()
@@ -1165,10 +2433,12 @@ void CConsole::OLn(const char* text, ...)
 void CConsole::OI()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    Indent();
+    consoleImpl->OI();
 #endif
 } // OI()
 
@@ -1179,13 +2449,15 @@ void CConsole::OI()
 void CConsole::OIO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
+    consoleImpl->OI();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OIO(text, list);
     va_end(list);
 #endif
 } // OI()
@@ -1197,13 +2469,15 @@ void CConsole::OIO(const char* text, ...)
 void CConsole::OIOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
+    consoleImpl->OI();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OIOLn(text, list);
     va_end(list);
 #endif
 } // OIOLn()
@@ -1215,14 +2489,16 @@ void CConsole::OIOLn(const char* text, ...)
 void CConsole::OLnOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OLnOI(text, list);
     va_end(list);
-    OI();
+    consoleImpl->OI();
 #endif
 } // OLnOI()
 
@@ -1233,10 +2509,12 @@ void CConsole::OLnOI(const char* text, ...)
 void CConsole::OIb(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    IndentBy(value);
+    consoleImpl->OIb(value);
 #endif
 } // OIb()
 
@@ -1247,10 +2525,12 @@ void CConsole::OIb(int value)
 void CConsole::OO()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    Outdent();
+    consoleImpl->OO();
 #endif
 } // OO()
 
@@ -1261,13 +2541,14 @@ void CConsole::OO()
 void CConsole::OOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OO();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OOO(text, list);
     va_end(list);
 #endif
 } // OO()
@@ -1279,13 +2560,14 @@ void CConsole::OOO(const char* text, ...)
 void CConsole::OOOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OO();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OOOLn(text, list);
     va_end(list);
 #endif
 } // OOLn()
@@ -1297,14 +2579,15 @@ void CConsole::OOOLn(const char* text, ...)
 void CConsole::OLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OLnOO(text, list);
     va_end(list);
-    OO();
 #endif
 } // OLnOI()
 
@@ -1315,10 +2598,12 @@ void CConsole::OLnOO(const char* text, ...)
 void CConsole::OOb(int value)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    OutdentBy(value);
+    consoleImpl->OOb(value);
 #endif
 } // OOb()
 
@@ -1329,15 +2614,15 @@ void CConsole::OOb(int value)
 void CConsole::OIOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OIOLnOO(text, list);
     va_end(list);
-    OO();
 #endif
 }
 
@@ -1349,12 +2634,12 @@ void CConsole::OIOLnOO(const char* text, ...)
 void CConsole::L(int n)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    for (int i = 0; i < n; i++)
-        O("-=");
-    OLn("-");
+    consoleImpl->L(n);
 #endif
 } // L()
 
@@ -1365,11 +2650,12 @@ void CConsole::L(int n)
 void CConsole::NOn()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->nMode = 0;
-    LoadColors();
+    consoleImpl->NOn();
 #endif
 } // NOn()
 
@@ -1380,20 +2666,12 @@ void CConsole::NOn()
 void CConsole::EOn()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    if ( consoleImpl->nMode == 1 )
-        return;
-    else if ( consoleImpl->nMode == 2 )
-        SOff();
-    consoleImpl->nMode = 1;
-    SaveColors();
-    SetFGColor( FOREGROUND_RED | FOREGROUND_INTENSITY, "FF0000" );
-    SetStringsColor(FOREGROUND_RED | FOREGROUND_GREEN, "DDDD00" );
-    SetFloatsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
-    SetIntsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
-    SetBoolsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
+    consoleImpl->EOn();
 #endif
 } // EOn()
 
@@ -1404,10 +2682,12 @@ void CConsole::EOn()
 void CConsole::EOff()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    NOn();
+    consoleImpl->EOff();
 #endif
 } // EOff()
 
@@ -1418,20 +2698,12 @@ void CConsole::EOff()
 void CConsole::SOn()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    if ( consoleImpl->nMode == 2 )
-        return;
-    else if ( consoleImpl->nMode == 1 )
-        EOff();
-    consoleImpl->nMode = 2;
-    SaveColors();
-    SetFGColor( FOREGROUND_GREEN | FOREGROUND_INTENSITY, "00FF00" );
-    SetStringsColor(FOREGROUND_RED | FOREGROUND_GREEN, "DDDD00" );
-    SetFloatsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
-    SetIntsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
-    SetBoolsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00" );
+    consoleImpl->SOn();
 #endif
 } // SOn()
 
@@ -1442,10 +2714,12 @@ void CConsole::SOn()
 void CConsole::SOff()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    NOn();
+    consoleImpl->SOff();
 #endif
 } // SOff()
 
@@ -1456,15 +2730,15 @@ void CConsole::SOff()
 void CConsole::SO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->SO(text, list);
     va_end(list);
-    SOff();
 #endif
 } // SO()
 
@@ -1475,15 +2749,15 @@ void CConsole::SO(const char* text, ...)
 void CConsole::SOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->SOLn(text, list);
     va_end(list);
-    SOff();
 #endif
 } // SOln()
 
@@ -1494,15 +2768,15 @@ void CConsole::SOLn(const char* text, ...)
 void CConsole::EO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->EO(text, list);
     va_end(list);
-    EOff();
 #endif
 } // EO()
 
@@ -1513,15 +2787,15 @@ void CConsole::EO(const char* text, ...)
 void CConsole::EOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->EOLn(text, list);
     va_end(list);
-    EOff();
 #endif
 } // EOln()
 
@@ -1532,16 +2806,15 @@ void CConsole::EOLn(const char* text, ...)
 void CConsole::OISO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OISO(text, list);
     va_end(list);
-    SOff();
 #endif
 } // OISO()
 
@@ -1552,16 +2825,15 @@ void CConsole::OISO(const char* text, ...)
 void CConsole::OISOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OISOLn(text, list);
     va_end(list);
-    SOff();
 #endif
 } // OISOLn()
 
@@ -1572,16 +2844,15 @@ void CConsole::OISOLn(const char* text, ...)
 void CConsole::OOSO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OO();
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OOSO(text, list);
     va_end(list);
-    SOff();
 #endif
 } // OOSO()
 
@@ -1592,16 +2863,15 @@ void CConsole::OOSO(const char* text, ...)
 void CConsole::OOSOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OO();
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OOSOLn(text, list);
     va_end(list);
-    SOff();
 #endif
 } // OOSOLn()
 
@@ -1612,16 +2882,15 @@ void CConsole::OOSOLn(const char* text, ...)
 void CConsole::OIEO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OIEO(text, list);
     va_end(list);
-    EOff();
 #endif
 } // OIEO()
 
@@ -1632,16 +2901,15 @@ void CConsole::OIEO(const char* text, ...)
 void CConsole::OIEOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OIEOLn(text, list);
     va_end(list);
-    EOff();
 #endif
 } // OIEOLn()
 
@@ -1652,16 +2920,15 @@ void CConsole::OIEOLn(const char* text, ...)
 void CConsole::OOEO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OO();
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OOEO(text, list);
     va_end(list);
-    EOff();
 #endif
 } // OOEO()
 
@@ -1672,16 +2939,15 @@ void CConsole::OOEO(const char* text, ...)
 void CConsole::OOEOLn(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OO();
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OOEOLn(text, list);
     va_end(list);
-    EOff();
 #endif
 } // OOEOLn()
 
@@ -1692,16 +2958,15 @@ void CConsole::OOEOLn(const char* text, ...)
 void CConsole::SOOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->SOOI(text, list);
     va_end(list);
-    SOff();
-    OI();
 #endif
 } // SOOI()
 
@@ -1712,16 +2977,15 @@ void CConsole::SOOI(const char* text, ...)
 void CConsole::SOLnOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->SOLnOI(text, list);
     va_end(list);
-    SOff();
-    OI();
 #endif
 } // SOLnOI()
 
@@ -1732,16 +2996,15 @@ void CConsole::SOLnOI(const char* text, ...)
 void CConsole::SOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->SOOO(text, list);
     va_end(list);
-    SOff();
-    OO();
 #endif
 } // SOOO()
 
@@ -1752,16 +3015,15 @@ void CConsole::SOOO(const char* text, ...)
 void CConsole::SOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->SOLnOO(text, list);
     va_end(list);
-    SOff();
-    OO();
 #endif
 } // SOLnOO()
 
@@ -1772,16 +3034,15 @@ void CConsole::SOLnOO(const char* text, ...)
 void CConsole::EOOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->EOOI(text, list);
     va_end(list);
-    EOff();
-    OI();
 #endif
 } // EOOI()
 
@@ -1792,16 +3053,15 @@ void CConsole::EOOI(const char* text, ...)
 void CConsole::EOLnOI(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->EOLnOI(text, list);
     va_end(list);
-    EOff();
-    OI();
 #endif
 } // EOLnOI()
 
@@ -1812,16 +3072,15 @@ void CConsole::EOLnOI(const char* text, ...)
 void CConsole::EOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->EOOO(text, list);
     va_end(list);
-    EOff();
-    OO();
 #endif
 } // EOOO()
 
@@ -1832,16 +3091,15 @@ void CConsole::EOOO(const char* text, ...)
 void CConsole::EOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->EOLnOO(text, list);
     va_end(list);
-    EOff();
-    OO();
 #endif
 } // EOLnOO()
 
@@ -1852,17 +3110,15 @@ void CConsole::EOLnOO(const char* text, ...)
 void CConsole::OISOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OISOOO(text, list);
     va_end(list);
-    SOff();
-    OO();
 #endif
 } // OISOOO
 
@@ -1873,17 +3129,15 @@ void CConsole::OISOOO(const char* text, ...)
 void CConsole::OISOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    SOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OISOLnOO(text, list);
     va_end(list);
-    SOff();
-    OO();
 #endif
 } // OISOLnOO
 
@@ -1894,17 +3148,15 @@ void CConsole::OISOLnOO(const char* text, ...)
 void CConsole::OIEOOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, false);
+    consoleImpl->OIEOOO(text, list);
     va_end(list);
-    EOff();
-    OO();
 #endif
 } // OIEOOO
 
@@ -1915,17 +3167,15 @@ void CConsole::OIEOOO(const char* text, ...)
 void CConsole::OIEOLnOO(const char* text, ...)
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
     va_list list;
-    OI();
-    EOn();
     va_start(list, text);
-    consoleImpl->WriteFormattedTextExCaller(this, text, list, true);
+    consoleImpl->OIEOLnOO(text, list);
     va_end(list);
-    EOff();
-    OO();
 #endif
 } // OIEOLnOO
 
@@ -1935,10 +3185,12 @@ void CConsole::OIEOLnOO(const char* text, ...)
 */
 int CConsole::getErrorOutsCount() const
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->nErrorOutCount;
+    return consoleImpl->getErrorOutsCount();
 } // getErrorOutsCount()
 
 
@@ -1947,73 +3199,67 @@ int CConsole::getErrorOutsCount() const
 */
 int CConsole::getSuccessOutsCount() const    
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return 0;
 
-    return consoleImpl->nSuccessOutCount;
+    return consoleImpl->getSuccessOutsCount();
 } // getSuccessOutsCount()
 
 
 CConsole& CConsole::operator<<(const char* text)
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return *this;
 
-    if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
-        for (int i = 0; i < consoleImpl->nIndentValue; i++)
-            consoleImpl->WriteText(" ");
-    consoleImpl->ImmediateWriteString(this, text);
+    *consoleImpl << text;
     return *this;
 } // operator<<()
 
 CConsole& CConsole::operator<<(const bool& b)
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return *this;
 
-    if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
-        for (int i = 0; i < consoleImpl->nIndentValue; i++)
-            consoleImpl->WriteText(" ");
-    consoleImpl->ImmediateWriteBool(this, b);
+    *consoleImpl << b;
     return *this;
 } // operator<<()
 
 CConsole& CConsole::operator<<(const int& n)
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return *this;
 
-    if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
-        for (int i = 0; i < consoleImpl->nIndentValue; i++)
-            consoleImpl->WriteText(" ");
-    consoleImpl->ImmediateWriteInt(this, n);
+    *consoleImpl << n;
     return *this;
 } // operator<<()
 
 CConsole& CConsole::operator<<(const float& f)
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return *this;
 
-    if ( consoleImpl->bFirstWriteTextCallAfterWriteTextLn )
-        for (int i = 0; i < consoleImpl->nIndentValue; i++)
-            consoleImpl->WriteText(" ");
-    consoleImpl->ImmediateWriteFloat(this, f);
+    *consoleImpl << f;
     return *this;
 } // operator<<()
 
 CConsole& CConsole::operator<<(const CConsole::FormatSignal& fs)
 {
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return *this;
 
-    switch (fs)
-    {
-    case NL: OLn(""); break;
-    case  S: SOn(); break;
-    case  E: EOn(); break;
-    default: NOn(); break;
-    }
+    *consoleImpl << fs;
     return *this;
 } // operator<<()
 
@@ -2049,15 +3295,13 @@ CConsole& CConsole::operator= (const CConsole&)
 CConsole::~CConsole()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if ( !isInitialized() )
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    OLn("CConsole::~CConsole() LAST MESSAGE, BYE!");
+    consoleImpl->OLn("CConsole::~CConsole() LAST MESSAGE, BYE!");
 #endif
-
-    consoleImpl->hConsole = NULL;
-    consoleImpl->bInited = false;
-    consoleImpl->nMode = 0;
 
     delete consoleImpl;
     consoleImpl = NULL;
