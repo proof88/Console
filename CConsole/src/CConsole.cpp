@@ -3292,7 +3292,12 @@ CConsole& CConsole::operator= (const CConsole&)
 CConsole::~CConsole()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    std::lock_guard<std::mutex> lock(mainMutex);
+    // dtor is private, no need to use mutex here, and also it worth mentioning that
+    // CConsole is existing as a single static instance, our mainMutex is also static,
+    // so at the end of the running program, I'm not sure about the release order of
+    // these resources but better not use that static mutex here.
+    // And also, a mutex might throw exception, we should never throw exception in
+    // dtor. If someone really needs mutex here, use a non-throwing mutex (see more on stackoverflow).
 
     if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
