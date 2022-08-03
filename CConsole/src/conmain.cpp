@@ -11,6 +11,11 @@
 
 #include <stdlib.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -136,6 +141,94 @@ static void TestModuleLoggingSet(CConsole& con)
     con.OLn("");
 }
 
+static std::mutex mtx;
+static std::condition_variable cv;
+
+static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int>& numThreadsWaiting)
+{
+    std::string sThreadName;
+    switch (fs)
+    {
+    case CConsole::FormatSignal::S:
+        con.SOn();
+        con.SetIndent(4);
+        sThreadName = "successThread";
+        break;
+    case CConsole::FormatSignal::E:
+        con.EOn();
+        con.SetIndent(8);
+        sThreadName = "errorThread";
+        break;
+    default:
+        con.NOn();
+        con.SetIndent(0);
+        sThreadName = "normalThread";
+    }
+    con.OLn("%s is starting now", sThreadName.c_str());
+
+    std::unique_lock<std::mutex> lk(mtx);
+    numThreadsWaiting++;
+    // note: if we dont use predicate, we need to check if wakeup was spurious!
+    cv.wait(lk);
+
+    for (int i = 0; i < 2; i++)
+    {
+        /*
+        switch (fs)
+        {
+        case CConsole::FormatSignal::S: con.SOn(); break;
+        case CConsole::FormatSignal::E: con.EOn(); break;
+        default: con.NOn();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        */
+        con.OLn("%s: some log blah blah blah 123 123", sThreadName.c_str());
+    }
+
+    con.OLn("%s is exiting now", sThreadName.c_str());
+    con.NOn();
+}
+
+static void TestConcurrentLogging(CConsole& con)
+{   
+    std::atomic<int> numThreadsWaiting = 0;
+    std::thread successThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::S, std::ref(numThreadsWaiting) };
+    std::thread errorThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::E, std::ref(numThreadsWaiting) };
+    std::thread normalThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::N, std::ref(numThreadsWaiting) };
+
+    // expectation: all threads should log their logs with their own colors and with their own indentation.
+    // each thread should not have impact on other thread's color (formatsignal) or indentation.
+
+    // TODO: get rid of this sleep, change sync to be more intelligent!
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    cv.notify_all();
+
+    if (successThread.get_id() != std::thread().get_id())
+    {
+        if (successThread.joinable())
+        {
+            successThread.join();
+            con.OLn("successThread joined");
+        }
+    }
+    if (errorThread.get_id() != std::thread().get_id())
+    {
+        if (errorThread.joinable())
+        {
+            errorThread.join();
+            con.OLn("errorThread joined");
+        }
+    }
+    if (normalThread.get_id() != std::thread().get_id())
+    {
+        if (normalThread.joinable())
+        {
+            normalThread.join();
+            con.OLn("normalThread joined");
+        }
+    }
+}
+
 int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, const LPSTR lpCmdLine, const int nCmdShow)
 {
     CConsole& con = CConsole::getConsoleInstance(CON_TITLE);
@@ -151,6 +244,7 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     TestCustomColors(con);
     TestOperatorStreamOut(con);
     TestModuleLoggingSet(con);
+    TestConcurrentLogging(con);
 
     system("pause");
 
