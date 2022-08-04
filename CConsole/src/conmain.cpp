@@ -30,6 +30,9 @@
 
 static void TestDefaultColors(CConsole& con)
 {
+    con.OLn("%s", __func__);
+    con.L();
+
     con.OLn("Simple text.");
     con.OLn("%s", "This is a string.");
     con.OLn("Signed integral value: %d", -5);
@@ -41,6 +44,9 @@ static void TestDefaultColors(CConsole& con)
 
 static void TestErrorMode(CConsole& con)
 {
+    con.OLn("%s", __func__);
+    con.L();
+
     con.OLn("Switching to error-mode now...");
     con.EOn();
 
@@ -66,6 +72,9 @@ static void TestErrorMode(CConsole& con)
 
 static void TestCustomColors(CConsole& con)
 {
+    con.OLn("%s", __func__);
+    con.L();
+
     con.SetFGColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE, "999999");
     con.SetIntsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, "FFFF00");
     con.SetStringsColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY, "FFFFFF");
@@ -106,6 +115,9 @@ static void TestCustomColors(CConsole& con)
 
 static void TestOperatorStreamOut(CConsole& con)
 {
+    con.OLn("%s", __func__);
+    con.L();
+
     con << "Using operator<<, this is a string, and this is a boolean: " << false << ", this is an integer: " << 16 << CConsole::FormatSignal::NL;
     con << "This is already a new line";
     con << " , and this is still the same line" << CConsole::FormatSignal::NL;
@@ -117,6 +129,9 @@ static void TestOperatorStreamOut(CConsole& con)
 
 static void TestModuleLoggingSet(CConsole& con)
 {
+    con.OLn("%s", __func__);
+    con.L();
+
     con.SetLoggingState(CON_TITLE, false);
     con.OLn("You are not supposed to see this, line %d!", __LINE__);
     con << "You are not supposed to see this either, line " << __LINE__ << "!" << CConsole::FormatSignal::NL;
@@ -168,8 +183,9 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
 
     std::unique_lock<std::mutex> lk(mtx);
     numThreadsWaiting++;
-    // note: if we dont use predicate, we need to check if wakeup was spurious!
-    cv.wait(lk);
+    cv.notify_all();
+    // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 3 won't have to wait
+    cv.wait(lk, [&] {return numThreadsWaiting == 3; });
 
     for (int i = 0; i < 2; i++)
     {
@@ -191,17 +207,15 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
 
 static void TestConcurrentLogging(CConsole& con)
 {   
+    con.OLn("%s", __func__);
+    con.L();
+    con.OLn("You should see 3 different threads logging their own logs with their own color and own indentation.");
+    con.OLn("Each thread should NOT have impact on other thread's color (formatsignal) or indentation.");
+
     std::atomic<int> numThreadsWaiting = 0;
     std::thread successThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::S, std::ref(numThreadsWaiting) };
     std::thread errorThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::E, std::ref(numThreadsWaiting) };
     std::thread normalThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::N, std::ref(numThreadsWaiting) };
-
-    // expectation: all threads should log their logs with their own colors and with their own indentation.
-    // each thread should not have impact on other thread's color (formatsignal) or indentation.
-
-    // TODO: get rid of this sleep, change sync to be more intelligent!
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-    cv.notify_all();
 
     if (successThread.get_id() != std::thread().get_id())
     {
