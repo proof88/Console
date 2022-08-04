@@ -183,31 +183,25 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
     }
     con.OLn("%s is starting now", sThreadName.c_str());
 
-    std::unique_lock<std::mutex> lk(mtx);
+    std::unique_lock<std::mutex> lk(mtx);  // lock must be locked by current thread, so lock is thread-specific, but mutex is shared!
     numThreadsWaiting++;
     cv.notify_all();
-    // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 3 won't have to wait
+    // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 3 won't have to wait, it will continue
     cv.wait(lk, [&] {return numThreadsWaiting == 3; });
+    lk.unlock();  // wait() unlocks the lock, but after continuing it will be locked again, so we explicitly unlock it here:
+    // if we don't explicitly unlock it, the other 2 threads will wait until a thread exits.
+    // we dont need the lock/mutex anymore, because every Console stuff we invoke below are expected to be thread-safe anyway!
 
     // TODO: per-module filter setting should be also tested, e.g. getConsoleInstance() accepts module name and stores it globally, it should be per-thread!
     for (int i = 1; i <= 10; i++)
     {
-        /*
-        switch (fs)
-        {
-        case CConsole::FormatSignal::S: con.SOn(); break;
-        case CConsole::FormatSignal::E: con.EOn(); break;
-        default: con.NOn();
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        */
         if (i % 5 == 0)
         {
             const int newIndentation = PFL::random(0, 20);
             con.SetIndent(newIndentation);
             con.OLn("%s has set new indentation: %d", sThreadName.c_str(), newIndentation);
         }
-        
+
         con.OLn("%s: some log blah blah blah 123 123", sThreadName.c_str());
     }
 
@@ -233,7 +227,7 @@ static void TestConcurrentLogging(CConsole& con)
         if (successThread.joinable())
         {
             successThread.join();
-            con.OLn("%s: successThread joined", __func__);
+            con.OLn("Main Thread: successThread joined");
         }
     }
     if (errorThread.get_id() != std::thread().get_id())
@@ -241,7 +235,7 @@ static void TestConcurrentLogging(CConsole& con)
         if (errorThread.joinable())
         {
             errorThread.join();
-            con.OLn("%s: errorThread joined", __func__);
+            con.OLn("Main Thread: errorThread joined");
         }
     }
     if (normalThread.get_id() != std::thread().get_id())
@@ -249,7 +243,7 @@ static void TestConcurrentLogging(CConsole& con)
         if (normalThread.joinable())
         {
             normalThread.join();
-            con.OLn("%s: normalThread joined", __func__);
+            con.OLn("Main Thread: normalThread joined");
         }
     }
 }
