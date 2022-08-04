@@ -21,6 +21,8 @@
 #endif
 #include <windows.h>
 
+#include "../../../PFL/PFL/PFL.h"
+
 
 #define CON_TITLE "CConsole demo program"
 
@@ -166,17 +168,17 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
     {
     case CConsole::FormatSignal::S:
         con.SOn();
-        con.SetIndent(4);
+        con.SetIndent(8);
         sThreadName = "successThread";
         break;
     case CConsole::FormatSignal::E:
         con.EOn();
-        con.SetIndent(8);
+        con.SetIndent(12);
         sThreadName = "errorThread";
         break;
     default:
         con.NOn();
-        con.SetIndent(0);
+        con.SetIndent(4);
         sThreadName = "normalThread";
     }
     con.OLn("%s is starting now", sThreadName.c_str());
@@ -187,7 +189,8 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
     // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 3 won't have to wait
     cv.wait(lk, [&] {return numThreadsWaiting == 3; });
 
-    for (int i = 0; i < 2; i++)
+    // TODO: per-module filter setting should be also tested, e.g. getConsoleInstance() accepts module name and stores it globally, it should be per-thread!
+    for (int i = 1; i <= 10; i++)
     {
         /*
         switch (fs)
@@ -198,6 +201,13 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         */
+        if (i % 5 == 0)
+        {
+            const int newIndentation = PFL::random(0, 20);
+            con.SetIndent(newIndentation);
+            con.OLn("%s has set new indentation: %d", sThreadName.c_str(), newIndentation);
+        }
+        
         con.OLn("%s: some log blah blah blah 123 123", sThreadName.c_str());
     }
 
@@ -211,6 +221,7 @@ static void TestConcurrentLogging(CConsole& con)
     con.L();
     con.OLn("You should see 3 different threads logging their own logs with their own color and own indentation.");
     con.OLn("Each thread should NOT have impact on other thread's color (formatsignal) or indentation.");
+    con.OLn("");
 
     std::atomic<int> numThreadsWaiting = 0;
     std::thread successThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::S, std::ref(numThreadsWaiting) };
@@ -222,7 +233,7 @@ static void TestConcurrentLogging(CConsole& con)
         if (successThread.joinable())
         {
             successThread.join();
-            con.OLn("successThread joined");
+            con.OLn("%s: successThread joined", __func__);
         }
     }
     if (errorThread.get_id() != std::thread().get_id())
@@ -230,7 +241,7 @@ static void TestConcurrentLogging(CConsole& con)
         if (errorThread.joinable())
         {
             errorThread.join();
-            con.OLn("errorThread joined");
+            con.OLn("%s: errorThread joined", __func__);
         }
     }
     if (normalThread.get_id() != std::thread().get_id())
@@ -238,7 +249,7 @@ static void TestConcurrentLogging(CConsole& con)
         if (normalThread.joinable())
         {
             normalThread.join();
-            con.OLn("normalThread joined");
+            con.OLn("%s: normalThread joined", __func__);
         }
     }
 }

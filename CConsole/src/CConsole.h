@@ -38,8 +38,6 @@ constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
 
 class CConsole
 {
-//#pragma message("  CConsole is included")
-
 public:
 
     enum FormatSignal

@@ -15,6 +15,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <mutex>
 #include <set>
 #include <string>
@@ -48,7 +49,7 @@
 
 using namespace std;
 
-static std::mutex mainMutex;  // did not want to put this into CConsoleImpl because then IsInitialized() could not be protected by this mutex when impl is not yet existing
+static std::mutex mainMutex;  // did not want to put this into CConsoleImpl because then CConsole::IsInitialized() could not be protected by this mutex when impl is not yet existing
 
 /*
    CConsole::CConsoleImpl
@@ -63,7 +64,7 @@ public:
     void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
     void SetErrorsAlwaysOn(bool state);                          /**< Sets errors always appear irrespective of logging state of current logger module. */
 
-    int  getIndent() const;       /**< Gets the current indentation. */
+    int  getIndent();       /**< Gets the current indentation. */
     void SetIndent(int value);    /**< Sets the current indentation. */
     void Indent();                /**< Increases indentation. */
     void IndentBy(int value);     /**< Increases indentation by the given value. */
@@ -77,39 +78,39 @@ public:
     WORD        getFGColor() const;            /**< Gets foreground color. */
     const char* getFGColorHtml() const;        /**< Gets html foreground color. */
     void        SetFGColor(
-        WORD clr, const char* html = NULL);   /**< Sets foreground color. */
+        WORD clr, const char* html = NULL);    /**< Sets foreground color. */
     WORD        getBGColor() const;            /**< Gets background color. */
     void        SetBGColor(WORD clr);          /**< Sets background color. */
 
     WORD        getIntsColor() const;          /**< Gets ints color. */
     const char* getIntsColorHtml() const;      /**< Gets ints html color. */
     void        SetIntsColor(
-        WORD clr, const char* html = NULL);   /**< Sets ints color. */
+        WORD clr, const char* html = NULL);    /**< Sets ints color. */
 
     WORD        getStringsColor() const;       /**< Gets strings color. */
     const char* getStringsColorHtml() const;   /**< Gets strings html color. */
     void        SetStringsColor(
-        WORD clr, const char* html = NULL);   /**< Sets strings color. */
+        WORD clr, const char* html = NULL);    /**< Sets strings color. */
 
     WORD        getFloatsColor() const;        /**< Gets floats color. */
     const char* getFloatsColorHtml() const;    /**< Gets floats html color. */
     void        SetFloatsColor(
-        WORD clr, const char* html = NULL);   /**< Sets floats color. */
+        WORD clr, const char* html = NULL);    /**< Sets floats color. */
 
     WORD        getBoolsColor() const;         /**< Gets bools color. */
     const char* getBoolsColorHtml() const;     /**< Gets bools html color. */
     void        SetBoolsColor(
-        WORD clr, const char* html = NULL);   /**< Sets bools color. */
+        WORD clr, const char* html = NULL);    /**< Sets bools color. */
 
     void O(const char* text, va_list list);       /**< Prints text to console. */
     void OLn(const char* text, va_list list);     /**< Prints text to console and adds a new line. */
     void OLn(const char* text, ...);              /**< Prints text to console and adds a new line. */
-    void OI();                           /**< Indent(). */
+    void OI();                                    /**< Indent(). */
     void OIO(const char* text, va_list list);     /**< OI() + O(text). */
     void OIOLn(const char* text, va_list list);   /**< OI() + OLn(text). */
     void OLnOI(const char* text, va_list list);   /**< OLn(text) + OI(). */
-    void OIb(int value);                 /**< IndentBy(). */
-    void OO();                           /**< Outdent(). */
+    void OIb(int value);                          /**< IndentBy(). */
+    void OO();                                    /**< Outdent(). */
     void OOO(const char* text, va_list list);     /**< OO() + O(text). */
     void OOOLn(const char* text, va_list list);   /**< OO() + OLn(text). */
     void OLnOO(const char* text, va_list list);   /**< OLn(text) + OO(). */
@@ -165,6 +166,11 @@ public:
 protected:
 
 private:
+    struct LogState
+    {
+        int  nIndentValue{0}; /**< Current indentation. */
+    };
+
     static const int CCONSOLE_INDENTATION_CHANGE = 2;           /**< Positive, amount of indent/outdent change by Indent()/Outdent(). */
     static const int CCONSOLE_DEF_CLR_FG = 
         FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;    /**< Foreground color. */
@@ -179,10 +185,11 @@ private:
     // ---------------------------------------------------------------------------
 
     bool bInited;                              /**< False by default, Initialize() sets it to true, Deinitialize() sets it to false. */
-    int  nRefCount;                            /**< 0 by default, Initialize() increases it by 1, Deinitialize() decreases it by 1. */
-    int  nMode;                                /**< Current mode: 0 if normal, 1 is error, 2 is success (EOn()/EOff()/SOn()/SOff()/RestoreDefaultColors() set this). */
-    int  nIndentValue;                         /**< Current indentation. */ 
+    int  nRefCount;                            /**< 0 by default, Initialize() increases it by 1, Deinitialize() decreases it by 1. */ 
     bool bFirstWriteTextCallAfterWriteTextLn;  /**< True if we are at the 1st no-new-line-print after a new-line-print. */
+    int  nMode;                                /**< Current mode: 0 if normal, 1 is error, 2 is success (EOn()/EOff()/SOn()/SOff()/RestoreDefaultColors() set this). */
+
+    std::map<std::thread::id, LogState> logState;  /**< Per-thread log state. */
     
     HANDLE hConsole;                    /**< Console output handle. */
     
@@ -215,7 +222,7 @@ private:
     std::ofstream fLog;
     bool bAllowLogFile;
 
-    std::string loggerName;                /**< Name of the current logger module that last invoked getConsoleInstance(). */
+    std::string loggerName;                /**< TODO: make this per-thread too! Name of the current logger module that last invoked getConsoleInstance(). */
     std::set<std::string> enabledModules;  /**< Contains logger module names for which logging is enabled. */
     bool        bErrorsAlwaysOn;           /**< Should module error logs always appear or not. */
 
@@ -312,12 +319,12 @@ void CConsole::CConsoleImpl::SetErrorsAlwaysOn(bool state)
 /**
     Gets the current indentation.
 */
-int CConsole::CConsoleImpl::getIndent() const
+int CConsole::CConsoleImpl::getIndent()
 {
     if ( !bInited )
         return 0;
 
-    return nIndentValue;
+    return logState[std::this_thread::get_id()].nIndentValue;
 } // getIndent()
 
 
@@ -329,9 +336,9 @@ void CConsole::CConsoleImpl::SetIndent(int value)
     if ( !bInited )
         return;
 
-    nIndentValue = value;
-    if (nIndentValue < 0)
-        nIndentValue = 0;
+    logState[std::this_thread::get_id()].nIndentValue = value;
+    if (logState[std::this_thread::get_id()].nIndentValue < 0)
+        logState[std::this_thread::get_id()].nIndentValue = 0;
 } // SetIndent()
 
 
@@ -343,7 +350,7 @@ void CConsole::CConsoleImpl::Indent()
     if ( !bInited )
         return;
 
-    nIndentValue += CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
+    logState[std::this_thread::get_id()].nIndentValue += CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
 } // Indent()
 
 
@@ -355,9 +362,9 @@ void CConsole::CConsoleImpl::IndentBy(int value)
     if ( !bInited )
         return;
 
-    nIndentValue += value;
-    if (nIndentValue < 0)
-        nIndentValue = 0;
+    logState[std::this_thread::get_id()].nIndentValue += value;
+    if (logState[std::this_thread::get_id()].nIndentValue < 0)
+        logState[std::this_thread::get_id()].nIndentValue = 0;
 } // IndentBy()
 
 
@@ -369,9 +376,9 @@ void CConsole::CConsoleImpl::Outdent()
     if ( !bInited )
         return;
 
-    nIndentValue -= CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
-    if (nIndentValue < 0)
-        nIndentValue = 0;
+    logState[std::this_thread::get_id()].nIndentValue -= CConsoleImpl::CCONSOLE_INDENTATION_CHANGE;
+    if (logState[std::this_thread::get_id()].nIndentValue < 0)
+        logState[std::this_thread::get_id()].nIndentValue = 0;
 } // Outdent()
 
 
@@ -383,9 +390,9 @@ void CConsole::CConsoleImpl::OutdentBy(int value)
     if ( !bInited )
         return;
 
-    nIndentValue -= value;
-    if (nIndentValue < 0)
-        nIndentValue = 0;
+    logState[std::this_thread::get_id()].nIndentValue -= value;
+    if (logState[std::this_thread::get_id()].nIndentValue < 0)
+        logState[std::this_thread::get_id()].nIndentValue = 0;
 } // OutdentBy()
 
 
@@ -1366,8 +1373,12 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const char* text)
         return *this;
 
     if (bFirstWriteTextCallAfterWriteTextLn)
-        for (int i = 0; i < nIndentValue; i++)
+    {
+        for (int i = 0; i < logState[std::this_thread::get_id()].nIndentValue; i++)
+        {
             WriteText(" ");
+        }
+    }
     ImmediateWriteString(text);
     return *this;
 } // operator<<()
@@ -1378,8 +1389,12 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const bool& b)
         return *this;
 
     if (bFirstWriteTextCallAfterWriteTextLn)
-        for (int i = 0; i < nIndentValue; i++)
+    {
+        for (int i = 0; i < logState[std::this_thread::get_id()].nIndentValue; i++)
+        {
             WriteText(" ");
+        }
+    }
     ImmediateWriteBool(b);
     return *this;
 } // operator<<()
@@ -1390,8 +1405,12 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const int& n)
         return *this;
 
     if (bFirstWriteTextCallAfterWriteTextLn)
-        for (int i = 0; i < nIndentValue; i++)
+    {
+        for (int i = 0; i < logState[std::this_thread::get_id()].nIndentValue; i++)
+        {
             WriteText(" ");
+        }
+    }
     ImmediateWriteInt(n);
     return *this;
 } // operator<<()
@@ -1402,8 +1421,12 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const float& f)
         return *this;
 
     if (bFirstWriteTextCallAfterWriteTextLn)
-        for (int i = 0; i < nIndentValue; i++)
+    {
+        for (int i = 0; i < logState[std::this_thread::get_id()].nIndentValue; i++)
+        {
             WriteText(" ");
+        }
+    }
     ImmediateWriteFloat(f);
     return *this;
 } // operator<<()
@@ -1441,7 +1464,6 @@ CConsole::CConsoleImpl::CConsoleImpl()
     nRefCount = 0;
     bInited = false;
     bErrorsAlwaysOn = true;
-    nIndentValue = 0;
     bFirstWriteTextCallAfterWriteTextLn = true;
     memset(clrFGhtml, 0, HTML_CLR_S);
     memset(clrStringsHtml, 0, HTML_CLR_S);
@@ -1696,7 +1718,7 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(const char* fmt, va_list list)
     float f;                                                                            
 
     if ( bFirstWriteTextCallAfterWriteTextLn )
-        for (int i = 0; i < nIndentValue; i++)
+        for (int i = 0; i < logState[std::this_thread::get_id()].nIndentValue; i++)
             WriteText(" ");
     
     oldClrFG = clrFG;
