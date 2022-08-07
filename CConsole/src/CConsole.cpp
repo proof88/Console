@@ -75,30 +75,30 @@ public:
     void SaveColors();            /**< Saves current colors. */
     void RestoreDefaultColors();  /**< Restores default colors. */
 
-    WORD        getFGColor() const;            /**< Gets foreground color. */
-    const char* getFGColorHtml() const;        /**< Gets html foreground color. */
+    WORD        getFGColor();                  /**< Gets foreground color. */
+    const char* getFGColorHtml();              /**< Gets html foreground color. */
     void        SetFGColor(
         WORD clr, const char* html = NULL);    /**< Sets foreground color. */
-    WORD        getBGColor() const;            /**< Gets background color. */
+    WORD        getBGColor();                  /**< Gets background color. */
     void        SetBGColor(WORD clr);          /**< Sets background color. */
 
-    WORD        getIntsColor() const;          /**< Gets ints color. */
-    const char* getIntsColorHtml() const;      /**< Gets ints html color. */
+    WORD        getIntsColor();                /**< Gets ints color. */
+    const char* getIntsColorHtml();            /**< Gets ints html color. */
     void        SetIntsColor(
         WORD clr, const char* html = NULL);    /**< Sets ints color. */
 
-    WORD        getStringsColor() const;       /**< Gets strings color. */
-    const char* getStringsColorHtml() const;   /**< Gets strings html color. */
+    WORD        getStringsColor();             /**< Gets strings color. */
+    const char* getStringsColorHtml();         /**< Gets strings html color. */
     void        SetStringsColor(
         WORD clr, const char* html = NULL);    /**< Sets strings color. */
 
-    WORD        getFloatsColor() const;        /**< Gets floats color. */
-    const char* getFloatsColorHtml() const;    /**< Gets floats html color. */
+    WORD        getFloatsColor();              /**< Gets floats color. */
+    const char* getFloatsColorHtml();          /**< Gets floats html color. */
     void        SetFloatsColor(
         WORD clr, const char* html = NULL);    /**< Sets floats color. */
 
-    WORD        getBoolsColor() const;         /**< Gets bools color. */
-    const char* getBoolsColorHtml() const;     /**< Gets bools html color. */
+    WORD        getBoolsColor();               /**< Gets bools color. */
+    const char* getBoolsColorHtml();           /**< Gets bools html color. */
     void        SetBoolsColor(
         WORD clr, const char* html = NULL);    /**< Sets bools color. */
 
@@ -166,53 +166,53 @@ public:
 protected:
 
 private:
-    struct LogState
-    {
-        int  nIndentValue{0}; /**< Current indentation. */
-    };
-
     static const int CCONSOLE_INDENTATION_CHANGE = 2;           /**< Positive, amount of indent/outdent change by Indent()/Outdent(). */
-    static const int CCONSOLE_DEF_CLR_FG = 
+    static const int CCONSOLE_DEF_CLR_FG =
         FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;    /**< Foreground color. */
 
-    static const int HTML_CLR_S = 7*sizeof(char);   /**< Size to store 1 HTML-color. */
+    static const int HTML_CLR_S = 7 * sizeof(char);   /**< Size to store 1 HTML-color. */
 
     static CConsoleImpl consoleImplInstance;
 
     static int      nErrorOutCount;         /**< Total OLn() during error mode. */
     static int      nSuccessOutCount;       /**< Total OLn() during success mode. */
 
+    struct LogState
+    {
+        int  nIndentValue{0};                     /**< Current indentation. */
+        int  nMode{0};                            /**< Current mode: 0 if normal, 1 is error, 2 is success (EOn()/EOff()/SOn()/SOff()/NOn()/RestoreDefaultColors() set this). */
+        WORD clrFG{CCONSOLE_DEF_CLR_FG},
+             clrBG{0};                            /**< Current foreground and background colors. */
+        char clrFGhtml[HTML_CLR_S]{0};            /**< Current foreground html color. */
+        WORD clrInts{CCONSOLE_DEF_CLR_FG},
+            clrFloats{CCONSOLE_DEF_CLR_FG},
+            clrStrings{CCONSOLE_DEF_CLR_FG},
+            clrBools{CCONSOLE_DEF_CLR_FG};        /**< Current colors for ints, strings, floats and bools. */
+        char clrIntsHtml[HTML_CLR_S]{0},
+            clrFloatsHtml[HTML_CLR_S]{0},
+            clrStringsHtml[HTML_CLR_S]{0},
+            clrBoolsHtml[HTML_CLR_S]{0};          /**< Current html colors for ints, strings, floats and bools. */
+        WORD dLastFGColor{0};                     /**< Saved foreground color. */
+        char dLastFGColorHtml[HTML_CLR_S]{0};     /**< Saved html foreground color. */
+        WORD dLastIntsColor{0},
+            dLastFloatsColor{0},
+            dLastStringsColor{0},
+            dLastBoolsColor{0};                   /**< Saved colors for ints, strings, floats and bools. */
+        char dLastIntsColorHtml[HTML_CLR_S]{0},
+            dLastFloatsColorHtml[HTML_CLR_S]{0},
+            dLastStringsColorHtml[HTML_CLR_S]{0},
+            dLastBoolsColorHtml[HTML_CLR_S]{0};   /**< Saved html colors for ints, strings, floats and bools. */
+    };
+
     // ---------------------------------------------------------------------------
 
     bool bInited;                              /**< False by default, Initialize() sets it to true, Deinitialize() sets it to false. */
     int  nRefCount;                            /**< 0 by default, Initialize() increases it by 1, Deinitialize() decreases it by 1. */ 
     bool bFirstWriteTextCallAfterWriteTextLn;  /**< True if we are at the 1st no-new-line-print after a new-line-print. */
-    int  nMode;                                /**< Current mode: 0 if normal, 1 is error, 2 is success (EOn()/EOff()/SOn()/SOff()/RestoreDefaultColors() set this). */
 
     std::map<std::thread::id, LogState> logState;  /**< Per-thread log state. */
     
     HANDLE hConsole;                    /**< Console output handle. */
-    
-    WORD clrFG, clrBG;                  /**< Current foreground and background colors. */
-    char clrFGhtml[HTML_CLR_S];         /**< Current foreground html color. */
-    WORD clrInts,
-         clrFloats,
-         clrStrings,
-         clrBools;                      /**< Current colors for ints, strings, floats and bools. */
-    char clrIntsHtml[HTML_CLR_S],
-         clrFloatsHtml[HTML_CLR_S],
-         clrStringsHtml[HTML_CLR_S],
-         clrBoolsHtml[HTML_CLR_S];      /**< Current html colors for ints, strings, floats and bools. */
-    WORD dLastFGColor;                  /**< Saved foreground color. */
-    char dLastFGColorHtml[HTML_CLR_S];  /**< Saved html foreground color. */
-    WORD dLastIntsColor,
-         dLastFloatsColor,
-         dLastStringsColor,
-         dLastBoolsColor;                   /**< Saved colors for ints, strings, floats and bools. */
-    char dLastIntsColorHtml[HTML_CLR_S],
-         dLastFloatsColorHtml[HTML_CLR_S],
-         dLastStringsColorHtml[HTML_CLR_S],
-         dLastBoolsColorHtml[HTML_CLR_S];   /**< Saved html colors for ints, strings, floats and bools. */
 
     char  vmi[80];                   /**< Temp, always used for the current printout. */
     DWORD wrt;                       /**< Temp, always used for the current printout. */
@@ -235,7 +235,7 @@ private:
 
     virtual ~CConsoleImpl();
 
-    bool canWeWriteBasedOnFilterSettings() const;
+    bool canWeWriteBasedOnFilterSettings();
 
     void ImmediateWriteString(const char* text);    /**< Directly writes formatted string value to the console. */
     void ImmediateWriteBool(bool b);                /**< Directly writes formatted boolean value to the console. */
@@ -404,11 +404,11 @@ void CConsole::CConsoleImpl::LoadColors()
     if ( !bInited )
         return;
 
-    SetFGColor(dLastFGColor, dLastBoolsColorHtml);
-    SetStringsColor(dLastStringsColor, dLastStringsColorHtml);
-    SetFloatsColor(dLastFloatsColor, dLastFloatsColorHtml);
-    SetIntsColor(dLastIntsColor, dLastIntsColorHtml);
-    SetBoolsColor(dLastBoolsColor, dLastBoolsColorHtml);
+    SetFGColor(logState[std::this_thread::get_id()].dLastFGColor, logState[std::this_thread::get_id()].dLastBoolsColorHtml);
+    SetStringsColor(logState[std::this_thread::get_id()].dLastStringsColor, logState[std::this_thread::get_id()].dLastStringsColorHtml);
+    SetFloatsColor(logState[std::this_thread::get_id()].dLastFloatsColor, logState[std::this_thread::get_id()].dLastFloatsColorHtml);
+    SetIntsColor(logState[std::this_thread::get_id()].dLastIntsColor, logState[std::this_thread::get_id()].dLastIntsColorHtml);
+    SetBoolsColor(logState[std::this_thread::get_id()].dLastBoolsColor, logState[std::this_thread::get_id()].dLastBoolsColorHtml);
 } // LoadColors()
 
 
@@ -418,19 +418,20 @@ void CConsole::CConsoleImpl::LoadColors()
 void CConsole::CConsoleImpl::SaveColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if (!bInited)
-        return;
+    // This should also work if we are not yet initialized, since Initialize() calls this
+    //if (!bInited)
+    //    return;
 
-    dLastFGColor = clrFG;
-    dLastStringsColor = clrStrings;
-    dLastFloatsColor = clrFloats;
-    dLastIntsColor = clrInts;
-    dLastBoolsColor = clrBools;
-    strcpy(dLastFGColorHtml, clrFGhtml);
-    strcpy(dLastStringsColorHtml, clrStringsHtml);
-    strcpy(dLastFloatsColorHtml, clrFloatsHtml);
-    strcpy(dLastIntsColorHtml, clrIntsHtml);
-    strcpy(dLastBoolsColorHtml, clrBoolsHtml);
+    logState[std::this_thread::get_id()].dLastFGColor = logState[std::this_thread::get_id()].clrFG;
+    logState[std::this_thread::get_id()].dLastStringsColor = logState[std::this_thread::get_id()].clrStrings;
+    logState[std::this_thread::get_id()].dLastFloatsColor = logState[std::this_thread::get_id()].clrFloats;
+    logState[std::this_thread::get_id()].dLastIntsColor = logState[std::this_thread::get_id()].clrInts;
+    logState[std::this_thread::get_id()].dLastBoolsColor = logState[std::this_thread::get_id()].clrBools;
+    strcpy(logState[std::this_thread::get_id()].dLastFGColorHtml, logState[std::this_thread::get_id()].clrFGhtml);
+    strcpy(logState[std::this_thread::get_id()].dLastStringsColorHtml, logState[std::this_thread::get_id()].clrStringsHtml);
+    strcpy(logState[std::this_thread::get_id()].dLastFloatsColorHtml, logState[std::this_thread::get_id()].clrFloatsHtml);
+    strcpy(logState[std::this_thread::get_id()].dLastIntsColorHtml, logState[std::this_thread::get_id()].clrIntsHtml);
+    strcpy(logState[std::this_thread::get_id()].dLastBoolsColorHtml, logState[std::this_thread::get_id()].clrBoolsHtml);
 #endif
 }
 
@@ -441,21 +442,33 @@ void CConsole::CConsoleImpl::SaveColors()
 void CConsole::CConsoleImpl::RestoreDefaultColors()
 {
 #ifdef CCONSOLE_IS_ENABLED
-    if (!bInited)
-        return;
+    // This should also work if we are not yet initialized, since Initialize() calls this
+    //if (!bInited)
+    //    return;
 
-    nMode = 0;
-    clrFG = CConsoleImpl::CCONSOLE_DEF_CLR_FG;
-    clrBG = 0;
-    clrInts = clrFG;
-    clrFloats = clrFG;
-    clrStrings = clrFG;
-    clrBools = clrFG;
-    strcpy(clrFGhtml, "999999");
-    strcpy(clrIntsHtml, clrFGhtml);
-    strcpy(clrFloatsHtml, clrFGhtml);
-    strcpy(clrStringsHtml, clrFGhtml);
-    strcpy(clrBoolsHtml, clrFGhtml);
+    logState[std::this_thread::get_id()].clrFG = CCONSOLE_DEF_CLR_FG;
+    logState[std::this_thread::get_id()].clrBG = 0;
+    logState[std::this_thread::get_id()].clrInts = logState[std::this_thread::get_id()].clrFG;
+    logState[std::this_thread::get_id()].clrFloats = logState[std::this_thread::get_id()].clrFG;
+    logState[std::this_thread::get_id()].clrStrings = logState[std::this_thread::get_id()].clrFG;
+    logState[std::this_thread::get_id()].clrBools = logState[std::this_thread::get_id()].clrFG;
+
+    memset(logState[std::this_thread::get_id()].clrFGhtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].clrStringsHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].clrIntsHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].clrFloatsHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].clrBoolsHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].dLastFGColorHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].dLastStringsColorHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].dLastIntsColorHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].dLastFloatsColorHtml, 0, HTML_CLR_S);
+    memset(logState[std::this_thread::get_id()].dLastBoolsColorHtml, 0, HTML_CLR_S);
+
+    strcpy(logState[std::this_thread::get_id()].clrFGhtml, "999999");
+    strcpy(logState[std::this_thread::get_id()].clrIntsHtml, logState[std::this_thread::get_id()].clrFGhtml);
+    strcpy(logState[std::this_thread::get_id()].clrFloatsHtml, logState[std::this_thread::get_id()].clrFGhtml);
+    strcpy(logState[std::this_thread::get_id()].clrStringsHtml, logState[std::this_thread::get_id()].clrFGhtml);
+    strcpy(logState[std::this_thread::get_id()].clrBoolsHtml, logState[std::this_thread::get_id()].clrFGhtml);
 #endif
 }
 
@@ -463,24 +476,24 @@ void CConsole::CConsoleImpl::RestoreDefaultColors()
 /**
     Gets foreground color.
 */
-WORD CConsole::CConsoleImpl::getFGColor() const
+WORD CConsole::CConsoleImpl::getFGColor()
 {
     if ( !bInited )
         return 0;
 
-    return clrFG;
+    return logState[std::this_thread::get_id()].clrFG;
 } // getFGColor()
 
 
 /**
     Gets html foreground color.
 */
-const char* CConsole::CConsoleImpl::getFGColorHtml() const
+const char* CConsole::CConsoleImpl::getFGColorHtml()
 {
     if ( !bInited )
         return "#DDBEEF";
 
-    return clrFGhtml;
+    return logState[std::this_thread::get_id()].clrFGhtml;
 } // getFGColorHtml()
 
 
@@ -492,22 +505,22 @@ void CConsole::CConsoleImpl::SetFGColor(WORD clr, const char* html)
     if ( !bInited )
         return;
 
-    clrFG = clr;
-    SetConsoleTextAttribute(hConsole, clrFG | clrBG);
+    logState[std::this_thread::get_id()].clrFG = clr;
+    SetConsoleTextAttribute(hConsole, logState[std::this_thread::get_id()].clrFG | logState[std::this_thread::get_id()].clrBG);
     if (html)
-        strcpy_s(clrFGhtml, CConsoleImpl::HTML_CLR_S, html);
+        strcpy_s(logState[std::this_thread::get_id()].clrFGhtml, CConsoleImpl::HTML_CLR_S, html);
 } // SetFGColor()
 
 
 /**
     Gets background color.
 */
-WORD CConsole::CConsoleImpl::getBGColor() const
+WORD CConsole::CConsoleImpl::getBGColor()
 {
     if ( !bInited )
         return 0;
 
-    return clrBG;
+    return logState[std::this_thread::get_id()].clrBG;
 } // getBGColor()
 
 
@@ -519,32 +532,32 @@ void CConsole::CConsoleImpl::SetBGColor(WORD clr)
     if ( !bInited )
         return;
 
-    clrBG = clr;
-    SetConsoleTextAttribute(hConsole, clrFG | clrBG);
+    logState[std::this_thread::get_id()].clrBG = clr;
+    SetConsoleTextAttribute(hConsole, logState[std::this_thread::get_id()].clrFG | logState[std::this_thread::get_id()].clrBG);
 } // SetBGColor()
 
 
 /**
     Gets ints color.
 */
-WORD CConsole::CConsoleImpl::getIntsColor() const
+WORD CConsole::CConsoleImpl::getIntsColor()
 {
     if ( !bInited )
         return 0;
 
-    return clrInts;
+    return logState[std::this_thread::get_id()].clrInts;
 } // getIntsColor()
 
 
 /**
     Gets ints html color.
 */
-const char* CConsole::CConsoleImpl::getIntsColorHtml() const
+const char* CConsole::CConsoleImpl::getIntsColorHtml()
 {
     if ( !bInited )
         return "#DDBEEF";
 
-    return clrIntsHtml;
+    return logState[std::this_thread::get_id()].clrIntsHtml;
 } // getIntsColorHtml()
 
 
@@ -556,33 +569,33 @@ void CConsole::CConsoleImpl::SetIntsColor(WORD clr, const char* html)
     if ( !bInited )
         return;
 
-    clrInts = clr;
+    logState[std::this_thread::get_id()].clrInts = clr;
     if (html)
-        strcpy_s(clrIntsHtml, CConsoleImpl::HTML_CLR_S, html);
+        strcpy_s(logState[std::this_thread::get_id()].clrIntsHtml, CConsoleImpl::HTML_CLR_S, html);
 } // SetIntsColor()
 
 
 /**
     Gets strings color.
 */
-WORD CConsole::CConsoleImpl::getStringsColor() const
+WORD CConsole::CConsoleImpl::getStringsColor()
 {
     if ( !bInited )
         return 0;
 
-    return clrStrings;
+    return logState[std::this_thread::get_id()].clrStrings;
 } // getStringsColor()
 
 
 /**
     Gets strings html color.
 */
-const char* CConsole::CConsoleImpl::getStringsColorHtml() const
+const char* CConsole::CConsoleImpl::getStringsColorHtml()
 {
     if ( !bInited )
         return "#DDBEEF";
 
-    return clrStringsHtml;
+    return logState[std::this_thread::get_id()].clrStringsHtml;
 } // getStringsColorHtml()
 
 
@@ -594,33 +607,33 @@ void CConsole::CConsoleImpl::SetStringsColor(WORD clr, const char* html)
     if ( !bInited )
         return;
 
-    clrStrings = clr;
+    logState[std::this_thread::get_id()].clrStrings = clr;
     if (html)
-        strcpy_s(clrStringsHtml, CConsoleImpl::HTML_CLR_S, html);
+        strcpy_s(logState[std::this_thread::get_id()].clrStringsHtml, CConsoleImpl::HTML_CLR_S, html);
 } // SetStringsColor()
 
 
 /**
     Gets floats color.
 */
-WORD CConsole::CConsoleImpl::getFloatsColor() const
+WORD CConsole::CConsoleImpl::getFloatsColor()
 {
     if ( !bInited )
         return 0;
 
-    return clrFloats;
+    return logState[std::this_thread::get_id()].clrFloats;
 } // getFloatsColor()
 
 
 /**
     Gets floats html color.
 */
-const char* CConsole::CConsoleImpl::getFloatsColorHtml() const
+const char* CConsole::CConsoleImpl::getFloatsColorHtml()
 {
     if ( !bInited )
         return "#DDBEEF";
 
-    return clrFloatsHtml;
+    return logState[std::this_thread::get_id()].clrFloatsHtml;
 } // getFloatsColorHtml()
 
 
@@ -632,33 +645,33 @@ void CConsole::CConsoleImpl::SetFloatsColor(WORD clr, const char* html)
     if ( !bInited )
         return;
 
-    clrFloats = clr;
+    logState[std::this_thread::get_id()].clrFloats = clr;
     if (html)
-        strcpy_s(clrFloatsHtml, CConsoleImpl::HTML_CLR_S, html);
+        strcpy_s(logState[std::this_thread::get_id()].clrFloatsHtml, CConsoleImpl::HTML_CLR_S, html);
 } // SetFloatsColor()
 
 
 /**
     Gets bools color.
 */
-WORD CConsole::CConsoleImpl::getBoolsColor() const
+WORD CConsole::CConsoleImpl::getBoolsColor()
 {
     if ( !bInited )
         return 0;
 
-    return clrBools;
+    return logState[std::this_thread::get_id()].clrBools;
 } // getBoolsColor()
 
 
 /**
     Gets bools html color.
 */
-const char* CConsole::CConsoleImpl::getBoolsColorHtml() const
+const char* CConsole::CConsoleImpl::getBoolsColorHtml()
 {
     if ( !bInited )
         return "#DDBEEF";
 
-    return clrBoolsHtml;
+    return logState[std::this_thread::get_id()].clrBoolsHtml;
 } // getBoolsColorHtml()
 
 
@@ -670,9 +683,9 @@ void CConsole::CConsoleImpl::SetBoolsColor(WORD clr, const char* html)
     if ( !bInited )
         return;
 
-    clrBools = clr;
+    logState[std::this_thread::get_id()].clrBools = clr;
     if (html)
-        strcpy_s(clrBoolsHtml, CConsoleImpl::HTML_CLR_S, html);
+        strcpy_s(logState[std::this_thread::get_id()].clrBoolsHtml, CConsoleImpl::HTML_CLR_S, html);
 } // SetBoolsColor()
 
 
@@ -878,7 +891,7 @@ void CConsole::CConsoleImpl::NOn()
     if ( !bInited )
         return;
 
-    nMode = 0;
+    logState[std::this_thread::get_id()].nMode = 0;
     LoadColors();
 } // NOn()
 
@@ -891,12 +904,16 @@ void CConsole::CConsoleImpl::EOn()
     if ( !bInited )
         return;
 
-    if (nMode == 1)
+    if (logState[std::this_thread::get_id()].nMode == 1)
+    {
         return;
-    else if (nMode == 2)
+    }
+    else if (logState[std::this_thread::get_id()].nMode == 2)
+    {
         SOff();
+    }
 
-    nMode = 1;
+    logState[std::this_thread::get_id()].nMode = 1;
     SaveColors();
     SetFGColor(FOREGROUND_RED | FOREGROUND_INTENSITY, "FF0000");
     SetStringsColor(FOREGROUND_RED | FOREGROUND_GREEN, "DDDD00");
@@ -926,12 +943,16 @@ void CConsole::CConsoleImpl::SOn()
     if ( !bInited )
         return;
 
-    if (nMode == 2)
+    if (logState[std::this_thread::get_id()].nMode == 2)
+    {
         return;
-    else if (nMode == 1)
+    }
+    else if (logState[std::this_thread::get_id()].nMode == 1)
+    {
         EOff();
+    }
 
-    nMode = 2;
+    logState[std::this_thread::get_id()].nMode = 2;
     SaveColors();
     SetFGColor(FOREGROUND_GREEN, "00DD00");
     SetStringsColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY, "00FF00");
@@ -1465,16 +1486,6 @@ CConsole::CConsoleImpl::CConsoleImpl()
     bInited = false;
     bErrorsAlwaysOn = true;
     bFirstWriteTextCallAfterWriteTextLn = true;
-    memset(clrFGhtml, 0, HTML_CLR_S);
-    memset(clrStringsHtml, 0, HTML_CLR_S);
-    memset(clrIntsHtml, 0, HTML_CLR_S);
-    memset(clrFloatsHtml, 0, HTML_CLR_S);
-    memset(clrBoolsHtml, 0, HTML_CLR_S);
-    memset(dLastFGColorHtml, 0, HTML_CLR_S);
-    memset(dLastStringsColorHtml, 0, HTML_CLR_S);
-    memset(dLastIntsColorHtml, 0, HTML_CLR_S);
-    memset(dLastFloatsColorHtml, 0, HTML_CLR_S);
-    memset(dLastBoolsColorHtml, 0, HTML_CLR_S);
     RestoreDefaultColors();
     SaveColors();
 } // CConsoleImpl(...)
@@ -1507,7 +1518,7 @@ CConsole::CConsoleImpl::~CConsoleImpl()
 } // ~CConsoleImpl()
 
 
-bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings() const
+bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings()
 {
     if ( loggerName.empty() )
     {
@@ -1527,7 +1538,7 @@ bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings() const
         return true;
     }
 
-    if ( bErrorsAlwaysOn && (nMode == 1) )
+    if ( bErrorsAlwaysOn && (logState[std::this_thread::get_id()].nMode == 1) )
     {
         return true;
     }
@@ -1546,21 +1557,21 @@ void CConsole::CConsoleImpl::ImmediateWriteString(const char* text)
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    oldClrFG = clrFG;
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
     //oldClrFGhtml = clrFGhtml;
     if ( text != NULL )
     {
-        SetFGColor(clrStrings);                             
+        SetFGColor(logState[std::this_thread::get_id()].clrStrings);
         WriteConsoleA(hConsole, text, strlen(text), &wrt, 0);
         if ( bAllowLogFile )
-            fLog << "<font color=\"#" << clrStringsHtml << "\">" << text << "</font>";
+            fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrStringsHtml << "\">" << text << "</font>";
     }
     else
     {
         SetFGColor(oldClrFG);
         WriteConsoleA(hConsole, "NULL", 4, &wrt, 0);
         if ( bAllowLogFile )
-            fLog << "<font color=\"#" << clrStringsHtml << "\">NULL</font>";
+            fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrStringsHtml << "\">NULL</font>";
     }
     SetFGColor(oldClrFG);
 #endif
@@ -1577,11 +1588,11 @@ void CConsole::CConsoleImpl::ImmediateWriteBool(bool l)
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    oldClrFG = clrFG;
-    SetFGColor(clrBools);
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
+    SetFGColor(logState[std::this_thread::get_id()].clrBools);
     WriteConsoleA(hConsole, l ? "true" : "false", l ? 4 : 5, &wrt, 0);
     if ( bAllowLogFile )
-        fLog << "<font color=\"#" << clrBoolsHtml << "\">" << (l ? "true" : "false") << "</font>";
+        fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrBoolsHtml << "\">" << (l ? "true" : "false") << "</font>";
     SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteBool()
@@ -1597,12 +1608,12 @@ void CConsole::CConsoleImpl::ImmediateWriteInt(int n)
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    oldClrFG = clrFG;
-    SetFGColor(clrInts);
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
+    SetFGColor(logState[std::this_thread::get_id()].clrInts);
     itoa(n,vmi,10);
     WriteConsoleA(hConsole, vmi, strlen(vmi), &wrt, 0);
     if ( bAllowLogFile )
-        fLog << "<font color=\"#" << clrIntsHtml << "\">" << vmi << "</font>";
+        fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrIntsHtml << "\">" << vmi << "</font>";
     SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteInt()
@@ -1618,12 +1629,12 @@ void CConsole::CConsoleImpl::ImmediateWriteUInt(unsigned int n)
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    oldClrFG = clrFG;
-    SetFGColor(clrInts);
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
+    SetFGColor(logState[std::this_thread::get_id()].clrInts);
     sprintf(vmi, "%u", n);
     WriteConsoleA(hConsole, vmi, strlen(vmi), &wrt, 0);
     if ( bAllowLogFile )
-        fLog << "<font color=\"#" << clrIntsHtml << "\">" << vmi << "</font>";
+        fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrIntsHtml << "\">" << vmi << "</font>";
     SetFGColor(oldClrFG);
 #endif
 } // ImmediateWriteUInt()
@@ -1639,7 +1650,7 @@ void CConsole::CConsoleImpl::ImmediateWriteFloat(float f)
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    oldClrFG = clrFG;
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
     sprintf(vmi, "%0.4f", f);
     const size_t nOriginalLen = strlen(vmi);
     size_t newlen = strlen(vmi);
@@ -1653,11 +1664,11 @@ void CConsole::CConsoleImpl::ImmediateWriteFloat(float f)
     }
     vmi[newlen] = '\0';
 
-    SetFGColor(clrFloats);
+    SetFGColor(logState[std::this_thread::get_id()].clrFloats);
     WriteConsoleA(hConsole, vmi, newlen, &wrt, 0);
     if (bAllowLogFile)
     {
-        fLog << "<font color=\"#" << clrFloatsHtml << "\">" << vmi << "</font>";
+        fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrFloatsHtml << "\">" << vmi << "</font>";
     }
     SetFGColor(oldClrFG);
 #endif
@@ -1674,8 +1685,8 @@ void CConsole::CConsoleImpl::WriteText(const char* text)
     if ( !canWeWriteBasedOnFilterSettings() )
         return;
 
-    oldClrFG = clrFG;
-    clrFG = clrStrings;
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
+    logState[std::this_thread::get_id()].clrFG = logState[std::this_thread::get_id()].clrStrings;
     WriteConsoleA(hConsole, text, strlen(text), &wrt, 0);
     if ( bAllowLogFile )
     {
@@ -1697,7 +1708,7 @@ void CConsole::CConsoleImpl::WriteText(const char* text)
         }
     }
     bFirstWriteTextCallAfterWriteTextLn = ( strstr(text, "\n") != NULL );
-    clrFG = oldClrFG;
+    logState[std::this_thread::get_id()].clrFG = oldClrFG;
 #endif
 } // WriteText()
 
@@ -1721,10 +1732,14 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(const char* fmt, va_list list)
         for (int i = 0; i < logState[std::this_thread::get_id()].nIndentValue; i++)
             WriteText(" ");
     
-    oldClrFG = clrFG;
-    if ( bAllowLogFile )
-        if ( nMode != 0 )
-            fLog << "<font color=\"#" << clrFGhtml << "\">";
+    oldClrFG = logState[std::this_thread::get_id()].clrFG;
+    if (bAllowLogFile)
+    {
+        if (logState[std::this_thread::get_id()].nMode != 0)
+        {
+            fLog << "<font color=\"#" << logState[std::this_thread::get_id()].clrFGhtml << "\">";
+        }
+    }
 
     if ( strstr(fmt, "%") == NULL )
     {
@@ -1790,9 +1805,13 @@ void CConsole::CConsoleImpl::WriteFormattedTextEx(const char* fmt, va_list list)
     } // else
     bFirstWriteTextCallAfterWriteTextLn = ( strstr(fmt, "\n") != NULL );
     SetFGColor(oldClrFG);
-    if ( bAllowLogFile )
-        if ( nMode != 0 )
+    if (bAllowLogFile)
+    {
+        if (logState[std::this_thread::get_id()].nMode != 0)
+        {
             fLog << "</font>";
+        }
+    }
 #endif
 } // WriteFormattedTextEx()
 
@@ -1813,10 +1832,14 @@ void CConsole::CConsoleImpl::WriteFormattedTextExCaller(const char* fmt, va_list
     if ( nl )
     {
         WriteText("\n\r");
-        if ( nMode == 1 )
+        if (logState[std::this_thread::get_id()].nMode == 1)
+        {
             nErrorOutCount++;
-        else if ( nMode == 2 )
+        }
+        else if (logState[std::this_thread::get_id()].nMode == 2)
+        {
             nSuccessOutCount++;
+        }
     }
 } // WriteFormattedTextExCaller()
 
@@ -1832,9 +1855,12 @@ void CConsole::CConsoleImpl::WriteFormattedTextExCaller(const char* fmt, va_list
 
 /**
     Gets the singleton instance.
-    @param logger Name of the logger who wants to use the singleton instance.
+    All public functions of this singleton instance are thread-safe.
+
+    @param loggerModule Name of the logger module who wants to use the singleton instance.
            It is recommended to use the same name for same entity, because this logger name
            is the basis of per-module filtering.
+           Even a single thread can use different logger modules.
     @return The singleton instance pre-set for the logger specified.
 */
 CConsole& CConsole::getConsoleInstance(const char* loggerModule)
@@ -1891,6 +1917,14 @@ void CConsole::SetErrorsAlwaysOn(bool state)
 /**
     This creates actually the console window if not created yet.
     An internal reference count is also increased by 1. Reference count explanation is described at Deinitialize().
+    In case of multiple threads using CConsole, all threads should invoke Initialize() once at thread startup, and invoke
+    Deinitialize() once at thread shutdown.
+
+    @param title The caption text that will be set in the appearing console window.
+                 Ignored in subsequent calls, when we are already initialized.
+    @param createLogFile If true, a HTML-based log file will be created and logs will be written into that in parallel with writing to the console window.
+                         Ignored in subsequent calls, when we are already initialized.
+
 */
 void CConsole::Initialize(const char* title, bool createLogFile)
 {
@@ -1912,8 +1946,15 @@ void CConsole::Initialize(const char* title, bool createLogFile)
     // we need to initialize only once, but refcount always needs to be incremented
     consoleImpl->nRefCount++;
 
+    // per-thread initialization
+    // TODO: ok this is good for per-thread, but not for when 1 thread invokes Initialize() multiple times ...
+    consoleImpl->RestoreDefaultColors();
+    consoleImpl->SaveColors();
+
     if ( !(consoleImpl->bInited) )
     {
+        // we are here only once per process
+
         if ( !AllocConsole() )
         {
             return;
@@ -1934,7 +1975,6 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             crd.Y = 10000;
             SetConsoleScreenBufferSize(consoleImpl->hConsole, crd);
         }
-        consoleImpl->RestoreDefaultColors();
         consoleImpl->bAllowLogFile = createLogFile;
         if ( createLogFile )
         {
@@ -1965,15 +2005,14 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             }
         }
 
-        consoleImpl->SOLn(" > CConsole (%s) has been initialized with title: %s, refcount: %d!", CCONSOLE_VERSION, title, consoleImpl->nRefCount);
+        consoleImpl->SOLn("CConsole::%s() > CConsole (%s) has been initialized with title: %s, refcount: %d!", __func__, CCONSOLE_VERSION, title, consoleImpl->nRefCount);
 
         // now we get rid of our hack
         consoleImpl->loggerName = prevLoggerName;
-
     }
     else
     {
-        consoleImpl->SOLn(" > CConsole is already initialized, new refcount: %d!", consoleImpl->nRefCount);
+        consoleImpl->SOLn("CConsole::%s() > Already initialized, new refcount: %d!", __func__, consoleImpl->nRefCount);
     }
 #endif
 } // Initialize()
@@ -1985,6 +2024,8 @@ void CConsole::Initialize(const char* title, bool createLogFile)
     With this simple reference counting, different parts/layers of a process can invoke Initialize() and Deinitialize()
     at their initializing and deinitializing functions, without the fear of 1 single Deinitialize() call might ruin
     the console functionality of other parts of the process.
+    In case of multiple threads using CConsole, all threads should invoke Initialize() once at thread startup, and invoke
+    Deinitialize() once at thread shutdown.
 */
 void CConsole::Deinitialize()
 {
@@ -1995,7 +2036,7 @@ void CConsole::Deinitialize()
         return;
 
     consoleImpl->nRefCount--;
-    //TODO consoleImpl->OLn("CConsole::Deinitialize() new refcount: %d", consoleImpl->nRefCount);
+    consoleImpl->OLn("CConsole::%s() new refcount: %d", __func__, consoleImpl->nRefCount);
     if ( consoleImpl->nRefCount == 0 )
     {
         this->~CConsole();
@@ -2120,11 +2161,7 @@ void CConsole::LoadColors()
     if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->SetFGColor(consoleImpl->dLastFGColor, consoleImpl->dLastBoolsColorHtml);
-    consoleImpl->SetStringsColor(consoleImpl->dLastStringsColor, consoleImpl->dLastStringsColorHtml);
-    consoleImpl->SetFloatsColor(consoleImpl->dLastFloatsColor, consoleImpl->dLastFloatsColorHtml);
-    consoleImpl->SetIntsColor(consoleImpl->dLastIntsColor, consoleImpl->dLastIntsColorHtml);
-    consoleImpl->SetBoolsColor(consoleImpl->dLastBoolsColor, consoleImpl->dLastBoolsColorHtml);
+    consoleImpl->LoadColors();
 #endif
 } // LoadColors()
 

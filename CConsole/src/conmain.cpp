@@ -163,6 +163,8 @@ static std::condition_variable cv;
 
 static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int>& numThreadsWaiting)
 {
+    con.Initialize("", false);
+
     std::string sThreadName;
     switch (fs)
     {
@@ -207,6 +209,7 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
 
     con.OLn("%s is exiting now", sThreadName.c_str());
     con.NOn();
+    con.Deinitialize();
 }
 
 static void TestConcurrentLogging(CConsole& con)
@@ -221,6 +224,8 @@ static void TestConcurrentLogging(CConsole& con)
     std::thread successThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::S, std::ref(numThreadsWaiting) };
     std::thread errorThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::E, std::ref(numThreadsWaiting) };
     std::thread normalThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::N, std::ref(numThreadsWaiting) };
+
+    // thread synchronization for starting their work is in threadFunc(), we are just waiting for them here to finish their job
 
     if (successThread.get_id() != std::thread().get_id())
     {
@@ -254,7 +259,7 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
 
     con.Initialize(CON_TITLE, true);
     con.SetLoggingState(CON_TITLE, true); // if we dont explicitly enable logging for CON_TITLE module, only errors will be visible
-    con.OLn(CON_TITLE);
+    con.OLn("%s", CON_TITLE);
     con.L();
     con.OLn("");
 
@@ -266,6 +271,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     TestConcurrentLogging(con);
 
     system("pause");
+
+    con.Deinitialize();
 
     return 0;
 
