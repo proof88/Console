@@ -10,3 +10,5 @@ CConsole/log.html
 *.html
 *.ilk
 *.ilk
+CConsole/Release/CConsole.vcxproj.FileListAbsolute.txt
+*.ilk
