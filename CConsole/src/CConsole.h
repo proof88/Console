@@ -34,6 +34,36 @@ constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
     Class handling console window.
     Intentionally pimpl instead of abstract interface, please don't try to change.
     Thread-safe.
+
+    Known issues:
+    A) reference-counting is done per-process, not per-thread.
+       This means that when Deinitialize() is invoked, we cannot decide when we can
+       free up per-thread log state data. We free up per-thread state data only when
+       reference count reaches 0. However, if threads born and die and born again,
+       a previously used thread id might be already used again by a newly born thread,
+       and that newly born thread will use the log state data of a previously died
+       thread instead of clean data.
+       Workaround:
+       threads should manually invoke RestoreDefaultColors() and SaveColors() after they
+       invoke their FIRST Initialize() during their birth.
+       Solution:
+       reference counting should be per-thread. This also means Deinitialize() should
+       summarize all reference counts before deciding to clean everything up at the end.
+
+    B) threads don't wait for each other to finish their current line.
+       Functions that don't start a new log line might cause wrong log output.
+       Example: O(). This function is typically used when we are iteratively building up
+       a log line. In between consecutive calls to this function, other threads might also
+       write to log.
+       Workaround:
+       if multiple threads are allowed to log, use functions that also start a new log line,
+       e.g. OLn().
+       Solution:
+       a new mutex should be introduced independent of the already existing mainMutex.
+       With lock_guard and unique_lock, the mutex is owned until the owner finally ends the
+       current log line. So when O() is invoked, the lock is kept even when the functions ends,
+       other threads will have to wait until a new line is started. Starting a new line will
+       always unlock this mutex.
 */
 
 class CConsole
@@ -153,11 +183,12 @@ public:
     int getErrorOutsCount() const;      /**< Gets total count of printouts-with-newline during error-mode. */
     int getSuccessOutsCount() const;    /**< Gets total count of printouts-with-newline during success-mode. */
 
-    CConsole& operator<<(const char* text);
-    CConsole& operator<<(const bool& b);
-    CConsole& operator<<(const int& n);
-    CConsole& operator<<(const float& f);
-    CConsole& operator<<(const CConsole::FormatSignal& fs); 
+    CConsole& operator<<(const char* text);  /**< O("%s", text). */
+    CConsole& operator<<(const bool& b);     /**< O("%b", b). */
+    CConsole& operator<<(const int& n);      /**< O("%d", n). */
+    CConsole& operator<<(const float& f);    /**< O("%f", f). */
+    CConsole& operator<<(
+        const CConsole::FormatSignal& fs);   /**< Changes current mode or adds a new line. */
 
 
 private:

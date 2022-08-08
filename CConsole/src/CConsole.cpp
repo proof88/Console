@@ -47,6 +47,12 @@
 #pragma warning(disable:4100)  /* "unreferenced formal parameter", obviously we will see a lot of if our macro is undefined */
 #endif
 
+// TODO: how to generate stacktrace:
+// - https://github.com/JochenKalmbach/StackWalker
+// - https://github.com/GPMueller/mwe-cpp-exception
+// - https://stackoverflow.com/questions/77005/how-to-automatically-generate-a-stacktrace-when-my-program-crashes
+// - https://stackoverflow.com/questions/11665829/how-can-i-print-stack-trace-for-caught-exceptions-in-c-code-injection-in-c/11674810#11674810
+
 using namespace std;
 
 static std::mutex mainMutex;  // did not want to put this into CConsoleImpl because then CConsole::IsInitialized() could not be protected by this mutex when impl is not yet existing
@@ -303,6 +309,7 @@ void CConsole::CConsoleImpl::SetLoggingState(const char* loggerModule, bool stat
 /**
     Sets errors always appear irrespective of logging state of current logger module.
     Default value is true.
+    Per-process property.
 
     @param state True will make module error logs appear even if module logging state is false for the current module.
                  False will let module errors logs be controlled purely by module logging states.
@@ -318,6 +325,7 @@ void CConsole::CConsoleImpl::SetErrorsAlwaysOn(bool state)
 
 /**
     Gets the current indentation.
+    Per-thread property.
 */
 int CConsole::CConsoleImpl::getIndent()
 {
@@ -330,6 +338,7 @@ int CConsole::CConsoleImpl::getIndent()
 
 /**
     Sets the current indentation.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetIndent(int value)
 {
@@ -344,6 +353,7 @@ void CConsole::CConsoleImpl::SetIndent(int value)
 
 /**
     Increases indentation.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::Indent()
 {
@@ -356,6 +366,7 @@ void CConsole::CConsoleImpl::Indent()
 
 /**
     Increases indentation by the given value.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::IndentBy(int value)
 {
@@ -370,6 +381,7 @@ void CConsole::CConsoleImpl::IndentBy(int value)
 
 /**
     Decreases indentation.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::Outdent()
 {
@@ -384,6 +396,7 @@ void CConsole::CConsoleImpl::Outdent()
 
 /**
     Decreases indentation by the given value.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::OutdentBy(int value)
 {
@@ -398,6 +411,7 @@ void CConsole::CConsoleImpl::OutdentBy(int value)
 
 /**
     Loads previously saved colors.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::LoadColors()
 {
@@ -414,6 +428,7 @@ void CConsole::CConsoleImpl::LoadColors()
 
 /**
     Saves current colors.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SaveColors()
 {
@@ -438,6 +453,7 @@ void CConsole::CConsoleImpl::SaveColors()
 
 /**
     Restores default colors.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::RestoreDefaultColors()
 {
@@ -475,6 +491,7 @@ void CConsole::CConsoleImpl::RestoreDefaultColors()
 
 /**
     Gets foreground color.
+    Per-thread property.
 */
 WORD CConsole::CConsoleImpl::getFGColor()
 {
@@ -487,6 +504,7 @@ WORD CConsole::CConsoleImpl::getFGColor()
 
 /**
     Gets html foreground color.
+    Per-thread property.
 */
 const char* CConsole::CConsoleImpl::getFGColorHtml()
 {
@@ -499,6 +517,7 @@ const char* CConsole::CConsoleImpl::getFGColorHtml()
 
 /**
     Sets foreground color.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetFGColor(WORD clr, const char* html)
 {
@@ -514,6 +533,7 @@ void CConsole::CConsoleImpl::SetFGColor(WORD clr, const char* html)
 
 /**
     Gets background color.
+    Per-thread property.
 */
 WORD CConsole::CConsoleImpl::getBGColor()
 {
@@ -526,6 +546,7 @@ WORD CConsole::CConsoleImpl::getBGColor()
 
 /**
     Sets background color.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetBGColor(WORD clr)
 {
@@ -539,6 +560,7 @@ void CConsole::CConsoleImpl::SetBGColor(WORD clr)
 
 /**
     Gets ints color.
+    Per-thread property.
 */
 WORD CConsole::CConsoleImpl::getIntsColor()
 {
@@ -551,6 +573,7 @@ WORD CConsole::CConsoleImpl::getIntsColor()
 
 /**
     Gets ints html color.
+    Per-thread property.
 */
 const char* CConsole::CConsoleImpl::getIntsColorHtml()
 {
@@ -563,6 +586,7 @@ const char* CConsole::CConsoleImpl::getIntsColorHtml()
 
 /**
     Sets ints color.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetIntsColor(WORD clr, const char* html)
 {
@@ -577,6 +601,7 @@ void CConsole::CConsoleImpl::SetIntsColor(WORD clr, const char* html)
 
 /**
     Gets strings color.
+    Per-thread property.
 */
 WORD CConsole::CConsoleImpl::getStringsColor()
 {
@@ -589,6 +614,7 @@ WORD CConsole::CConsoleImpl::getStringsColor()
 
 /**
     Gets strings html color.
+    Per-thread property.
 */
 const char* CConsole::CConsoleImpl::getStringsColorHtml()
 {
@@ -601,6 +627,7 @@ const char* CConsole::CConsoleImpl::getStringsColorHtml()
 
 /**
     Sets strings color.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetStringsColor(WORD clr, const char* html)
 {
@@ -615,6 +642,7 @@ void CConsole::CConsoleImpl::SetStringsColor(WORD clr, const char* html)
 
 /**
     Gets floats color.
+    Per-thread property.
 */
 WORD CConsole::CConsoleImpl::getFloatsColor()
 {
@@ -627,6 +655,7 @@ WORD CConsole::CConsoleImpl::getFloatsColor()
 
 /**
     Gets floats html color.
+    Per-thread property.
 */
 const char* CConsole::CConsoleImpl::getFloatsColorHtml()
 {
@@ -639,6 +668,7 @@ const char* CConsole::CConsoleImpl::getFloatsColorHtml()
 
 /**
     Sets floats color.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetFloatsColor(WORD clr, const char* html)
 {
@@ -653,6 +683,7 @@ void CConsole::CConsoleImpl::SetFloatsColor(WORD clr, const char* html)
 
 /**
     Gets bools color.
+    Per-thread property.
 */
 WORD CConsole::CConsoleImpl::getBoolsColor()
 {
@@ -665,6 +696,7 @@ WORD CConsole::CConsoleImpl::getBoolsColor()
 
 /**
     Gets bools html color.
+    Per-thread property.
 */
 const char* CConsole::CConsoleImpl::getBoolsColorHtml()
 {
@@ -677,6 +709,7 @@ const char* CConsole::CConsoleImpl::getBoolsColorHtml()
 
 /**
     Sets bools color.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SetBoolsColor(WORD clr, const char* html)
 {
@@ -885,6 +918,7 @@ void CConsole::CConsoleImpl::L(int n)
 
 /**
     Normal-mode on.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::NOn()
 {
@@ -898,6 +932,7 @@ void CConsole::CConsoleImpl::NOn()
 
 /**
     Error-mode on.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::EOn()
 {
@@ -924,7 +959,8 @@ void CConsole::CConsoleImpl::EOn()
 
 
 /**
-    Error-mode  off.
+    Error-mode off.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::EOff()
 {
@@ -937,6 +973,7 @@ void CConsole::CConsoleImpl::EOff()
 
 /**
     Success-mode on.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SOn()
 {
@@ -964,6 +1001,7 @@ void CConsole::CConsoleImpl::SOn()
 
 /**
     Success-mode off.
+    Per-thread property.
 */
 void CConsole::CConsoleImpl::SOff()
 {
@@ -1388,6 +1426,9 @@ int CConsole::CConsoleImpl::getSuccessOutsCount() const
 } // getSuccessOutsCount()
 
 
+/**
+    O("%s", text).
+*/
 CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const char* text)
 {
     if ( !bInited )
@@ -1404,6 +1445,10 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const char* text)
     return *this;
 } // operator<<()
 
+
+/**
+    O("%b", b).
+*/
 CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const bool& b)
 {
     if ( !bInited )
@@ -1420,6 +1465,10 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const bool& b)
     return *this;
 } // operator<<()
 
+
+/**
+    O("%d", n).
+*/
 CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const int& n)
 {
     if ( !bInited )
@@ -1436,6 +1485,10 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const int& n)
     return *this;
 } // operator<<()
 
+
+/**
+    O("%f", f).
+*/
 CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const float& f)
 {
     if ( !bInited )
@@ -1452,6 +1505,12 @@ CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const float& f)
     return *this;
 } // operator<<()
 
+
+/**
+    Changes current mode or adds a new line.
+    Based on value of fs, equals to calling EOn()/EOff()/SOn()/SOff()/NOn() accordingly.
+    If fs is FormatSignal::NL, the behavior is same as OLn("").
+*/
 CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const CConsole::FormatSignal& fs)
 {
     if ( !bInited )
@@ -1899,6 +1958,7 @@ void CConsole::SetLoggingState(const char* loggerModule, bool state)
 /**
     Sets errors always appear irrespective of logging state of current logger module.
     Default value is true.
+    Per-process property.
 
     @param state True will make module error logs appear even if module logging state is false for the current module.
                  False will let module errors logs be controlled purely by module logging states.
@@ -1943,17 +2003,25 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         }
     }
 
-    // we need to initialize only once, but refcount always needs to be incremented
+    // refcount always needs to be incremented as soon as we reach this point;
+    // even 1 thread can increase it multiple times, that is normal, since multiple independent subsystems/libraries
+    // running on same thread invoke Initialize() during their startup
     consoleImpl->nRefCount++;
 
-    // per-thread initialization
-    // TODO: ok this is good for per-thread, but not for when 1 thread invokes Initialize() multiple times ...
-    consoleImpl->RestoreDefaultColors();
-    consoleImpl->SaveColors();
+    const bool bNewThread = consoleImpl->logState.end() == consoleImpl->logState.find(std::this_thread::get_id());
+    if (bNewThread)
+    {
+        // per-thread log state initialization
+        // LogState sets some defaults for indentation and colors when created so we just set some necessary stuff here
+        consoleImpl->logState.insert({ std::this_thread::get_id(), CConsoleImpl::LogState{} });
+        consoleImpl->RestoreDefaultColors();
+        consoleImpl->SaveColors();
+    }
 
     if ( !(consoleImpl->bInited) )
     {
-        // we are here only once per process
+        // we come here only once per process, even if Initialize() is invoked multiple consecutive times
+        // (of course we might come here later again if Deinitialize() completely shuts console down)
 
         if ( !AllocConsole() )
         {
@@ -2012,7 +2080,14 @@ void CConsole::Initialize(const char* title, bool createLogFile)
     }
     else
     {
-        consoleImpl->SOLn("CConsole::%s() > Already initialized, new refcount: %d!", __func__, consoleImpl->nRefCount);
+        if (bNewThread)
+        {
+            consoleImpl->SOLn("CConsole::%s() > Already initialized, but this is a new thread, and new refcount: %d!", __func__, consoleImpl->nRefCount);
+        }
+        else
+        {
+            consoleImpl->SOLn("CConsole::%s() > Already initialized, new refcount: %d!", __func__, consoleImpl->nRefCount);
+        }
     }
 #endif
 } // Initialize()
@@ -2047,6 +2122,12 @@ void CConsole::Deinitialize()
 
 /**
     Tells if console window is already initialized.
+    In case of multiple threads using CConsole, all threads should invoke Initialize() once at thread startup, and invoke
+    Deinitialize() once at thread shutdown.
+    Note that if one thread successfully initializes CConsole, this function will return true even if invoked by some other thread, even if
+    that other thread not yet had initialized CConsole. Still all threads should invoke Initialize() if they want to use CConsole,
+    regardless of the return value of this function.
+
     @return True if console window is initialized, false otherwise.
 */
 bool CConsole::isInitialized() const
@@ -2058,6 +2139,7 @@ bool CConsole::isInitialized() const
 
 /**
     Gets the current indentation.
+    Per-thread property.
 */
 int CConsole::getIndent() const
 {
@@ -2072,6 +2154,7 @@ int CConsole::getIndent() const
 
 /**
     Sets the current indentation.
+    Per-thread property.
 */
 void CConsole::SetIndent(int value)
 {
@@ -2088,6 +2171,7 @@ void CConsole::SetIndent(int value)
 
 /**
     Increases indentation.
+    Per-thread property.
 */
 void CConsole::Indent()
 {
@@ -2104,6 +2188,7 @@ void CConsole::Indent()
 
 /**
     Increases indentation by the given value.
+    Per-thread property.
 */
 void CConsole::IndentBy(int value)
 {
@@ -2120,6 +2205,7 @@ void CConsole::IndentBy(int value)
 
 /**
     Decreases indentation.
+    Per-thread property.
 */
 void CConsole::Outdent()
 {
@@ -2136,6 +2222,7 @@ void CConsole::Outdent()
 
 /**
     Decreases indentation by the given value.
+    Per-thread property.
 */
 void CConsole::OutdentBy(int value)
 {
@@ -2152,6 +2239,7 @@ void CConsole::OutdentBy(int value)
 
 /**
     Loads previously saved colors.
+    Per-thread property.
 */
 void CConsole::LoadColors()
 {
@@ -2168,6 +2256,7 @@ void CConsole::LoadColors()
 
 /** 
     Saves current colors.
+    Per-thread property.
 */
 void CConsole::SaveColors()
 {
@@ -2184,6 +2273,7 @@ void CConsole::SaveColors()
 
 /**
     Restores default colors.
+    Per-thread property.
 */
 void CConsole::RestoreDefaultColors()
 {
@@ -2200,6 +2290,7 @@ void CConsole::RestoreDefaultColors()
 
 /**
     Gets foreground color.
+    Per-thread property.
 */
 WORD CConsole::getFGColor() const
 {
@@ -2214,6 +2305,7 @@ WORD CConsole::getFGColor() const
 
 /**
     Gets html foreground color.
+    Per-thread property.
 */
 const char* CConsole::getFGColorHtml() const
 {
@@ -2228,6 +2320,7 @@ const char* CConsole::getFGColorHtml() const
 
 /**
     Sets foreground color.
+    Per-thread property.
 */
 void CConsole::SetFGColor(WORD clr, const char* html)
 {
@@ -2244,6 +2337,7 @@ void CConsole::SetFGColor(WORD clr, const char* html)
 
 /**
     Gets background color.
+    Per-thread property.
 */
 WORD CConsole::getBGColor() const
 {
@@ -2258,6 +2352,7 @@ WORD CConsole::getBGColor() const
 
 /**
     Sets background color.
+    Per-thread property.
 */
 void CConsole::SetBGColor(WORD clr)
 {
@@ -2274,6 +2369,7 @@ void CConsole::SetBGColor(WORD clr)
 
 /**
     Gets ints color.
+    Per-thread property.
 */
 WORD CConsole::getIntsColor() const
 {
@@ -2288,6 +2384,7 @@ WORD CConsole::getIntsColor() const
 
 /**
     Gets ints html color.
+    Per-thread property.
 */
 const char* CConsole::getIntsColorHtml() const
 {
@@ -2302,6 +2399,7 @@ const char* CConsole::getIntsColorHtml() const
 
 /**
     Sets ints color.
+    Per-thread property.
 */
 void CConsole::SetIntsColor(WORD clr, const char* html)
 {
@@ -2318,6 +2416,7 @@ void CConsole::SetIntsColor(WORD clr, const char* html)
 
 /**
     Gets strings color.
+    Per-thread property.
 */
 WORD CConsole::getStringsColor() const
 {
@@ -2332,6 +2431,7 @@ WORD CConsole::getStringsColor() const
 
 /**
     Gets strings html color.
+    Per-thread property.
 */
 const char* CConsole::getStringsColorHtml() const
 {
@@ -2346,6 +2446,7 @@ const char* CConsole::getStringsColorHtml() const
 
 /**
     Sets strings color.
+    Per-thread property.
 */
 void CConsole::SetStringsColor(WORD clr, const char* html)
 {
@@ -2362,6 +2463,7 @@ void CConsole::SetStringsColor(WORD clr, const char* html)
 
 /**
     Gets floats color.
+    Per-thread property.
 */
 WORD CConsole::getFloatsColor() const
 {
@@ -2376,6 +2478,7 @@ WORD CConsole::getFloatsColor() const
 
 /**
     Gets floats html color.
+    Per-thread property.
 */
 const char* CConsole::getFloatsColorHtml() const
 {
@@ -2390,6 +2493,7 @@ const char* CConsole::getFloatsColorHtml() const
 
 /**
     Sets floats color.
+    Per-thread property.
 */
 void CConsole::SetFloatsColor(WORD clr, const char* html)
 {
@@ -2406,6 +2510,7 @@ void CConsole::SetFloatsColor(WORD clr, const char* html)
 
 /**
     Gets bools color.
+    Per-thread property.
 */
 WORD CConsole::getBoolsColor() const
 {
@@ -2420,6 +2525,7 @@ WORD CConsole::getBoolsColor() const
 
 /**
     Gets bools html color.
+    Per-thread property.
 */
 const char* CConsole::getBoolsColorHtml() const
 {
@@ -2434,6 +2540,7 @@ const char* CConsole::getBoolsColorHtml() const
 
 /**
     Sets bools color.
+    Per-thread property.
 */
 void CConsole::SetBoolsColor(WORD clr, const char* html)
 {
@@ -2702,6 +2809,7 @@ void CConsole::L(int n)
 
 /**
     Normal-mode on.
+    Per-thread property.
 */
 void CConsole::NOn()
 {
@@ -2718,6 +2826,7 @@ void CConsole::NOn()
 
 /**
     Error-mode on.
+    Per-thread property.
 */
 void CConsole::EOn()
 {
@@ -2733,7 +2842,8 @@ void CConsole::EOn()
 
 
 /**
-    Error-mode  off.
+    Error-mode off.
+    Per-thread property.
 */
 void CConsole::EOff()
 {
@@ -2750,6 +2860,7 @@ void CConsole::EOff()
 
 /**
     Success-mode on.
+    Per-thread property.
 */
 void CConsole::SOn()
 {
@@ -2766,6 +2877,7 @@ void CConsole::SOn()
 
 /**
     Success-mode off. 
+    Per-thread property.
 */
 void CConsole::SOff()
 {
@@ -3238,6 +3350,7 @@ void CConsole::OIEOLnOO(const char* text, ...)
 
 /**
     Gets total count of printouts-with-newline during error-mode.
+    Per-process property.
 */
 int CConsole::getErrorOutsCount() const
 {
@@ -3252,6 +3365,7 @@ int CConsole::getErrorOutsCount() const
 
 /**
     Gets total count of printouts-with-newline during success-mode.
+    Per-process property.
 */
 int CConsole::getSuccessOutsCount() const    
 {
@@ -3264,6 +3378,9 @@ int CConsole::getSuccessOutsCount() const
 } // getSuccessOutsCount()
 
 
+/**
+    O("%s", text).
+*/
 CConsole& CConsole::operator<<(const char* text)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
@@ -3275,6 +3392,10 @@ CConsole& CConsole::operator<<(const char* text)
     return *this;
 } // operator<<()
 
+
+/**
+    O("%b", b).
+*/
 CConsole& CConsole::operator<<(const bool& b)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
@@ -3286,6 +3407,10 @@ CConsole& CConsole::operator<<(const bool& b)
     return *this;
 } // operator<<()
 
+
+/**
+    O("%d", n).
+*/
 CConsole& CConsole::operator<<(const int& n)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
@@ -3297,6 +3422,10 @@ CConsole& CConsole::operator<<(const int& n)
     return *this;
 } // operator<<()
 
+
+/**
+    O("%f", f).
+*/
 CConsole& CConsole::operator<<(const float& f)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
@@ -3308,6 +3437,12 @@ CConsole& CConsole::operator<<(const float& f)
     return *this;
 } // operator<<()
 
+
+/**
+    Changes current mode or adds a new line.
+    Based on value of fs, equals to calling EOn()/EOff()/SOn()/SOff()/NOn() accordingly.
+    If fs is FormatSignal::NL, the behavior is same as OLn("").
+*/
 CConsole& CConsole::operator<<(const CConsole::FormatSignal& fs)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
