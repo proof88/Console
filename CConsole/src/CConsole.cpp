@@ -2032,7 +2032,7 @@ void CConsole::Deinitialize()
 #ifdef CCONSOLE_IS_ENABLED   
     std::lock_guard<std::mutex> lock(mainMutex);
 
-    if ( !(consoleImpl && (consoleImpl->bInited)) )
+    if ( !consoleImpl )
         return;
 
     consoleImpl->nRefCount--;
@@ -3358,7 +3358,7 @@ CConsole::~CConsole()
     // And also, a mutex might throw exception, we should never throw exception in
     // dtor. If someone really needs mutex here, use a non-throwing mutex (see more on stackoverflow).
 
-    if ( !(consoleImpl && (consoleImpl->bInited)) )
+    if ( !consoleImpl )
         return;
 
     consoleImpl->OLn("CConsole::~CConsole() LAST MESSAGE, BYE!");
@@ -3366,4 +3366,7 @@ CConsole::~CConsole()
 
     delete consoleImpl;
     consoleImpl = NULL;
+    // I know this might look unusual why I set sg to null in dtor, the answer is that the dtor is invoked
+    // manually by Deinitialize() too, in such case CConsole instance is not destroyed completely, in such
+    // case we need variables like this to be reset.
 }
