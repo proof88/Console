@@ -37,7 +37,8 @@ constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
 
     Known issues:
     A) reference-counting is done per-process, not per-thread.
-       This means that when Deinitialize() is invoked, we cannot decide when we can
+       Reference count is increased with every call to Initialize().
+       When Deinitialize() is invoked, we cannot decide when we can
        free up per-thread log state data. We free up per-thread state data only when
        reference count reaches 0. However, if threads born and die and born again,
        a previously used thread id might be already used again by a newly born thread,
@@ -80,12 +81,13 @@ public:
 
     // ---------------------------------------------------------------------------
 
-    static CConsole& getConsoleInstance(const char* loggerModule = "");   /**< Gets the singleton instance. */
+    static CConsole& getConsoleInstance(const char* loggerModuleName = "");   /**< Gets the singleton instance. */
 
     // ---------------------------------------------------------------------------
 
-    void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
-    void SetErrorsAlwaysOn(bool state);                          /**< Sets errors always appear irrespective of logging state of current logger module. */
+    bool getLoggingState(const char* loggerModuleName) const;        /**< Gets logging state for the given logger module. */
+    void SetLoggingState(const char* loggerModuleName, bool state);  /**< Sets logging on or off for the given logger module. */
+    void SetErrorsAlwaysOn(bool state);                              /**< Sets errors always appear irrespective of logging state of current logger module. */
 
     void Initialize(
         const char* title,

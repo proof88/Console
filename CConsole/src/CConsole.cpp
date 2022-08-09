@@ -67,6 +67,8 @@ static std::mutex mainMutex;  // did not want to put this into CConsoleImpl beca
 class CConsole::CConsoleImpl
 {
 public:
+    void SetLoggerModuleName(const char* loggerModuleName);      /**< Sets the current logger module name. */
+    bool getLoggingState(const char* loggerModuleName);          /**< Gets logging state for the given logger module. */
     void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
     void SetErrorsAlwaysOn(bool state);                          /**< Sets errors always appear irrespective of logging state of current logger module. */
 
@@ -188,6 +190,7 @@ private:
     struct LogState
     {
         int  nIndentValue{0};                     /**< Current indentation. */
+        std::string sLoggerName;                  /**< Name of the current logger module that last invoked getConsoleInstance(). */
         int  nMode{0};                            /**< Current mode: 0 if normal, 1 is error, 2 is success (EOn()/EOff()/SOn()/SOff()/NOn()/RestoreDefaultColors() set this). */
         WORD clrFG{CCONSOLE_DEF_CLR_FG},
              clrBG{0};                            /**< Current foreground and background colors. */
@@ -230,7 +233,6 @@ private:
     std::ofstream fLog;
     bool bAllowLogFile;
 
-    std::string loggerName;                /**< TODO: make this per-thread too! Name of the current logger module that last invoked getConsoleInstance(). */
     std::set<std::string> enabledModules;  /**< Contains logger module names for which logging is enabled. */
     bool        bErrorsAlwaysOn;           /**< Should module error logs always appear or not. */
 
@@ -268,27 +270,64 @@ private:
 
 
 /**
+    Sets the current logger module name.
+    Per-thread property.
+*/
+void CConsole::CConsoleImpl::SetLoggerModuleName(const char* loggerModuleName)
+{
+    logState[std::this_thread::get_id()].sLoggerName = loggerModuleName;
+}
+
+
+/**
+    Gets logging state for the given logger module.
+    See more explanation about logger module state at SetLoggingState().
+    Per-process property.
+
+    @param loggerModuleName Name of the logger whose logging state we are interested in.
+    @return Logging state of the given logger module. Always true for empty string.
+*/
+bool CConsole::CConsoleImpl::getLoggingState(const char* loggerModuleName)
+{
+    if (!bInited)
+    {
+        return false;
+    }
+
+    std::string sLoggerModuleName = loggerModuleName;
+    if (sLoggerModuleName.empty())
+    {
+        return true;
+    }
+
+    return enabledModules.end() != enabledModules.find(sLoggerModuleName);
+}
+
+
+/**
     Sets logging on or off for the given logger module.
     By default logging is NOT enabled for any logger modules.
     Initially logging can be done only with empty loggerModule name.
     For specific modules that invoke getConsoleInstance() with their module name, logging
     state must be enabled in order to make their logs actually appear.
+    Per-process property: changing logging state of a logger module will have the same effect on
+    all threads using the same logger module name.
 
-    @param loggerModule Name of the logger who wants to change its logging state.
-                        If this is "4LLM0DUL3S", the given state turns full verbose logging on or off, regardless of any other logging state.
+    @param loggerModuleName Name of the logger who wants to change its logging state.
+                            If this is "4LLM0DUL3S", the given state turns full verbose logging on or off, regardless of any other logging state.
     @param state True to enable logging of the loggerModule, false to disable.
 */
-void CConsole::CConsoleImpl::SetLoggingState(const char* loggerModule, bool state)
+void CConsole::CConsoleImpl::SetLoggingState(const char* loggerModuleName, bool state)
 {
     if ( !bInited )
         return;
 
-    const size_t sizeOfLoggerModuleNameBuffer = sizeof(char) * (strlen(loggerModule) + 1);
+    const size_t sizeOfLoggerModuleNameBuffer = sizeof(char) * (strlen(loggerModuleName) + 1);
     char* const newNameLoggerModule = (char* const)malloc(sizeOfLoggerModuleNameBuffer);
     if (newNameLoggerModule == nullptr)
         return;
 
-    strncpy_s(newNameLoggerModule, sizeOfLoggerModuleNameBuffer, loggerModule, sizeOfLoggerModuleNameBuffer);
+    strncpy_s(newNameLoggerModule, sizeOfLoggerModuleNameBuffer, loggerModuleName, sizeOfLoggerModuleNameBuffer);
     PFL::strClr(newNameLoggerModule);
     if (strlen(newNameLoggerModule) == 0)
     {
@@ -299,11 +338,11 @@ void CConsole::CConsoleImpl::SetLoggingState(const char* loggerModule, bool stat
 
     if (state)
     {
-        enabledModules.insert(loggerModule);
+        enabledModules.insert(loggerModuleName);
     }
     else
     {
-        enabledModules.erase(loggerModule);
+        enabledModules.erase(loggerModuleName);
     }
 } // SetLoggingState 
 
@@ -1607,7 +1646,7 @@ CConsole::CConsoleImpl::~CConsoleImpl()
 
 bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings()
 {
-    if ( loggerName.empty() )
+    if ( logState[std::this_thread::get_id()].sLoggerName.empty() )
     {
         return true;
     }
@@ -1619,7 +1658,7 @@ bool CConsole::CConsoleImpl::canWeWriteBasedOnFilterSettings()
         return true;
     }
 
-    it = enabledModules.find(loggerName);
+    it = enabledModules.find(logState[std::this_thread::get_id()].sLoggerName);
     if ( it != enabledModules.end() )
     {
         return true;
@@ -1944,21 +1983,47 @@ void CConsole::CConsoleImpl::WriteFormattedTextExCaller(const char* fmt, va_list
     Gets the singleton instance.
     All public functions of this singleton instance are thread-safe.
 
-    @param loggerModule Name of the logger module who wants to use the singleton instance.
+    @param loggerModuleName Name of the logger module who wants to use the singleton instance.
            It is recommended to use the same name for same entity, because this logger name
            is the basis of per-module filtering.
            Even a single thread can use different logger modules.
-    @return The singleton instance pre-set for the logger specified.
+           The given logger module name is used for the invoking thread, so threads logging
+           concurrently with different logger module names are not affecting each other's
+           enabled state for the given logger module name.
+    @return The singleton instance pre-set for the specified logger module.
 */
-CConsole& CConsole::getConsoleInstance(const char* loggerModule)
+CConsole& CConsole::getConsoleInstance(const char* loggerModuleName)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
 
-    if ( consoleInstance.consoleImpl && loggerModule ) {
-        consoleInstance.consoleImpl->loggerName = loggerModule;
+    if (consoleInstance.consoleImpl && loggerModuleName)
+    {
+        consoleInstance.consoleImpl->SetLoggerModuleName(loggerModuleName);
     }
     return consoleInstance;
 } // getConsoleInstance()
+
+
+/**
+    Gets logging state for the given logger module.
+    See more explanation about logger module state at SetLoggingState().
+    Per-process property.
+
+    @param loggerModuleName Name of the logger whose logging state we are interested in.
+    @return Logging state of the given logger module. Always true for empty string.
+*/
+bool CConsole::getLoggingState(const char* loggerModuleName) const
+{
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if ( !(consoleImpl && (consoleImpl->bInited)) )
+        return false;
+
+    if (!loggerModuleName)
+        return false;
+
+    return consoleImpl->getLoggingState(loggerModuleName);
+}
 
 
 /**
@@ -1967,19 +2032,21 @@ CConsole& CConsole::getConsoleInstance(const char* loggerModule)
     Initially logging can be done only with empty loggerModule name.
     For specific modules that invoke getConsoleInstance() with their module name, logging
     state must be enabled in order to make their logs actually appear.
+    Per-process property: changing logging state of a logger module will have the same effect on
+    all threads using the same logger module name.
 
-    @param loggerModule Name of the logger who wants to change its logging state.
-                        If this is "4LLM0DUL3S", the given state turns full verbose logging on or off, regardless of any other logging state.
+    @param loggerModuleName Name of the logger who wants to change its logging state.
+                            If this is "4LLM0DUL3S", the given state turns full verbose logging on or off, regardless of any other logging state.
     @param state True to enable logging of the loggerModule, false to disable.
 */
-void CConsole::SetLoggingState(const char* loggerModule, bool state)
+void CConsole::SetLoggingState(const char* loggerModuleName, bool state)
 {
     std::lock_guard<std::mutex> lock(mainMutex);
 
     if ( !(consoleImpl && (consoleImpl->bInited)) )
         return;
 
-    consoleImpl->SetLoggingState(loggerModule, state);
+    consoleImpl->SetLoggingState(loggerModuleName, state);
 } // SetLoggingState 
 
 
@@ -2049,7 +2116,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
     if ( !(consoleImpl->bInited) )
     {
         // we come here only once per process, even if Initialize() is invoked multiple consecutive times
-        // (of course we might come here later again if Deinitialize() completely shuts console down)
+        // (of course we might come here later again if sufficient number of calls to Deinitialize() completely shut console down)
 
         if ( !AllocConsole() )
         {
@@ -2057,8 +2124,8 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         }
 
         // hack to let logs of this initialize function pass thru 
-        const std::string prevLoggerName = consoleImpl->loggerName;
-        consoleImpl->loggerName = "";
+        const std::string prevLoggerName = consoleImpl->logState[std::this_thread::get_id()].sLoggerName;
+        consoleImpl->logState[std::this_thread::get_id()].sLoggerName = "";
         
         consoleImpl->bInited = true;
         consoleImpl->nErrorOutCount = 0;
@@ -2104,7 +2171,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         consoleImpl->SOLn("CConsole::%s() > CConsole (%s) has been initialized with title: %s, refcount: %d!", __func__, CCONSOLE_VERSION, title, consoleImpl->nRefCount);
 
         // now we get rid of our hack
-        consoleImpl->loggerName = prevLoggerName;
+        consoleImpl->logState[std::this_thread::get_id()].sLoggerName = prevLoggerName;
     }
     else
     {

@@ -189,8 +189,6 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
         sThreadName = "normalThread";
     }
     
-    // SetLoggingState is needed because later we will use CConsole::getConsoleInstance() with module name
-    con.SetLoggingState(sThreadName.c_str(), true);
     con.OLn("%s is starting now", sThreadName.c_str());
 
     // now we wait for all threads to execute above statements
@@ -217,17 +215,16 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
 
     // first test: text output, indentation and mode (colors) are unique for each thread, they dont mess with each other
     // ##############################################################################################################################
-    // TODO: per-module filter setting should be also tested, e.g. getConsoleInstance() accepts module name and stores it globally, it should be per-thread!
     for (int i = 1; i <= 10; i++)
     {
         if (i % 5 == 0)
         {
             const int newIndentation = PFL::random(0, 20);
-            CConsole::getConsoleInstance(sThreadName.c_str()).SetIndent(newIndentation);
-            CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s has set new indentation: %d", sThreadName.c_str(), newIndentation);
+            con.SetIndent(newIndentation);
+            con.OLn("%s has set new indentation: %d", sThreadName.c_str(), newIndentation);
         }
 
-        CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s logNo %d: some log blah blah blah 123 123", sThreadName.c_str(), i);
+        con.OLn("%s logNo %d: some log blah blah blah 123 123", sThreadName.c_str(), i);
     }
 
     nThreadCntr++;
@@ -249,6 +246,7 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
         nErrorsOutCount = con.getErrorOutsCount();
         nSuccessOutCount = con.getSuccessOutsCount();
 
+        con.NOn(); // temporal normal mode
         con.OLn("");
         con.OLn("All threads have reset their indentation and ready for next test!");
         con.OLn("");
@@ -258,12 +256,25 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
         con.OLn("Next test starting");
         con.OLn("");
 
+        // set required colors again
+        switch (fs)
+        {
+        case CConsole::FormatSignal::S: con.SOn(); break;
+        case CConsole::FormatSignal::E: con.EOn(); break;
+        default:
+            ; // nothing to do
+        }
+
         con.ResetErrorOutsCount();
         con.ResetSuccessOutsCount();
         nErrorsOutCount = 0;
         nSuccessOutCount = 0;
         nThreadCntr = 0;
     }
+
+    // SetLoggingState is needed because later we will use CConsole::getConsoleInstance() with module name
+    con.SetLoggingState(sThreadName.c_str(), true);
+    con.SetErrorsAlwaysOn(false);
     
     // first 2 threads will actually wait here, the last thread setting nThreadCntr to 0 won't have to wait, it will continue
     numThreadsWaiting = 0;
@@ -273,24 +284,44 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
 
     // next test: using getConsoleInstance() with different module names, we expect threads are not messing with each other
     // ##############################################################################################################################
-    //for (int i = 1; i <= 10; i++)
-    //{
-    //    if (i % 3 == 0)
-    //    {
-    //        const bool bModuleEnabled = (PFL::random(0, 1) == 1);
-    //        // we use con instead of getConsoleInstance() because this way log will always appear regardless of module filter state
-    //        con.OLn("%s: has %s logging for its module name", sThreadName.c_str(), bModuleEnabled ? "enabled" : "disabled");
-    //        con.SetLoggingState(sThreadName.c_str(), bModuleEnabled);
-    //    }
-    //    CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s logNo %d: should this be a visible log, shouldn't be?", sThreadName.c_str(), i);
-    //}
+    int nVisibleLogs = 0;
+    int nHiddenLogs = 0;
+    for (int i = 1; i <= 10; i++)
+    {
+        if (i % 3 == 0)
+        {
+            const bool bModuleEnabled = (PFL::random(0, 1) == 1);
+            if (con.getLoggingState(sThreadName.c_str()) != bModuleEnabled)
+            {
+                // here we use empty string for getConsoleInstance() because this way log will always appear regardless of module filter state
+                CConsole::getConsoleInstance("").OLn("%s: has %s logging for its module name", sThreadName.c_str(), bModuleEnabled ? "enabled" : "disabled");
+                // note that using empty string will actually clear the logger module name for current thread, so make sure
+                // we always use the logger module name with getConsoleInstance() whenever we are logging something, to set the name again!
+                con.SetLoggingState(sThreadName.c_str(), bModuleEnabled);
+            }
+        }
+        // and here we log with module name, which might be enabled or disabled
+        CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s logNo %d: should this be a visible log, shouldn't be?", sThreadName.c_str(), i);
+        if (con.getLoggingState(sThreadName.c_str()))
+        {
+            nVisibleLogs++;
+        }
+        else
+        {
+            nHiddenLogs++;
+        }
+    }
 
+    con.SetLoggingState(sThreadName.c_str(), true);
+    con.NOn(); // temporal normal mode
+    con.OLn("%s FINISHED, number of visible logs: %d, number of hidden logs: %d, total is %d, should be %d, that is %s!",
+        sThreadName.c_str(), nVisibleLogs, nHiddenLogs, nVisibleLogs + nHiddenLogs, 10, (10 == nVisibleLogs + nHiddenLogs ? "GOOD" : "BAD"));
+    
     numThreadsWaiting++;
     
     // preparing for next test, we are waiting here for all threads to finish above test
     // ##############################################################################################################################
     lk.lock();
-    con.SetLoggingState(sThreadName.c_str(), true);
     if (numThreadsWaiting == 3)
     {
         // last finishing thread will run this code
@@ -299,6 +330,15 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
         con.OLn("Next test starting");
         con.OLn("");
         numThreadsWaiting = 0;
+    }
+
+    // set required colors again
+    switch (fs)
+    {
+    case CConsole::FormatSignal::S: con.SOn(); break;
+    case CConsole::FormatSignal::E: con.EOn(); break;
+    default:
+        ; // nothing to do
     }
     
     // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 0 won't have to wait, it will continue
