@@ -182,6 +182,8 @@ public:
 
     int getErrorOutsCount() const;      /**< Gets total count of printouts-with-newline during error-mode. */
     int getSuccessOutsCount() const;    /**< Gets total count of printouts-with-newline during success-mode. */
+    void ResetErrorOutsCount();         /**< Resets total count of printouts-with-newline during error-mode. */
+    void ResetSuccessOutsCount();       /**< Resets total count of printouts-with-newline during success-mode. */
 
     CConsole& operator<<(const char* text);  /**< O("%s", text). */
     CConsole& operator<<(const bool& b);     /**< O("%b", b). */

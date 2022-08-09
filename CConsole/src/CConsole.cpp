@@ -162,6 +162,8 @@ public:
 
     int getErrorOutsCount() const;      /**< Gets total count of printouts-with-newline during error-mode. */
     int getSuccessOutsCount() const;    /**< Gets total count of printouts-with-newline during success-mode. */
+    void ResetErrorOutsCount();         /**< Resets total count of printouts-with-newline during error-mode. */
+    void ResetSuccessOutsCount();       /**< Resets total count of printouts-with-newline during success-mode. */
 
     CConsole::CConsoleImpl& operator<<(const char* text);
     CConsole::CConsoleImpl& operator<<(const bool& b);
@@ -1427,6 +1429,32 @@ int CConsole::CConsoleImpl::getSuccessOutsCount() const
 
 
 /**
+    Resets total count of printouts-with-newline during error-mode.
+    Per-process property.
+*/
+void CConsole::CConsoleImpl::ResetErrorOutsCount()
+{
+    if (!bInited)
+        return;
+
+    nErrorOutCount = 0;
+}
+
+
+/**
+    Resets total count of printouts-with-newline during success-mode.
+    Per-process property.
+*/
+void CConsole::CConsoleImpl::ResetSuccessOutsCount()
+{
+    if (!bInited)
+        return;
+
+    nSuccessOutCount = 0;
+}
+
+
+/**
     O("%s", text).
 */
 CConsole::CConsoleImpl& CConsole::CConsoleImpl::operator<<(const char* text)
@@ -1979,12 +2007,12 @@ void CConsole::SetErrorsAlwaysOn(bool state)
     An internal reference count is also increased by 1. Reference count explanation is described at Deinitialize().
     In case of multiple threads using CConsole, all threads should invoke Initialize() once at thread startup, and invoke
     Deinitialize() once at thread shutdown.
+    If CConsole is already initialized, then the parameters used in subsequent calls to Initialize() are ignored.
 
     @param title The caption text that will be set in the appearing console window.
-                 Ignored in subsequent calls, when we are already initialized.
+                 Ignored in subsequent calls, when CConsole is already initialized.
     @param createLogFile If true, a HTML-based log file will be created and logs will be written into that in parallel with writing to the console window.
-                         Ignored in subsequent calls, when we are already initialized.
-
+                         Ignored in subsequent calls, when CConsole is already initialized.
 */
 void CConsole::Initialize(const char* title, bool createLogFile)
 {
@@ -2082,11 +2110,11 @@ void CConsole::Initialize(const char* title, bool createLogFile)
     {
         if (bNewThread)
         {
-            consoleImpl->SOLn("CConsole::%s() > Already initialized, but this is a new thread, and new refcount: %d!", __func__, consoleImpl->nRefCount);
+            consoleImpl->SOLn("CConsole::%s() > Already initialized, but this is a new thread, and new refcount is: %d!", __func__, consoleImpl->nRefCount);
         }
         else
         {
-            consoleImpl->SOLn("CConsole::%s() > Already initialized, new refcount: %d!", __func__, consoleImpl->nRefCount);
+            consoleImpl->SOLn("CConsole::%s() > Already initialized, new refcount is: %d!", __func__, consoleImpl->nRefCount);
         }
     }
 #endif
@@ -3376,6 +3404,35 @@ int CConsole::getSuccessOutsCount() const
 
     return consoleImpl->getSuccessOutsCount();
 } // getSuccessOutsCount()
+
+
+/**
+    Resets total count of printouts-with-newline during error-mode.
+    Per-process property.
+*/
+void CConsole::ResetErrorOutsCount()
+{
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if (!(consoleImpl && (consoleImpl->bInited)))
+        return;
+
+    consoleImpl->ResetErrorOutsCount();
+}
+
+/**
+    Resets total count of printouts-with-newline during success-mode.
+    Per-process property.
+*/
+void CConsole::ResetSuccessOutsCount()
+{
+    std::lock_guard<std::mutex> lock(mainMutex);
+
+    if (!(consoleImpl && (consoleImpl->bInited)))
+        return;
+
+    consoleImpl->ResetSuccessOutsCount();
+}
 
 
 /**

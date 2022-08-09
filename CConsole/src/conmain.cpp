@@ -160,9 +160,14 @@ static void TestModuleLoggingSet(CConsole& con)
 
 static std::mutex mtx;
 static std::condition_variable cv;
+static std::atomic<int> numThreadsWaiting = 0;
+static std::atomic<int> nThreadCntr = 0;
+static std::atomic<int> nErrorsOutCount = 0;
+static std::atomic<int> nSuccessOutCount = 0;
 
-static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int>& numThreadsWaiting)
+static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
 {
+    // in case of consecutive Initialize() calls, the parameters don't really matter
     con.Initialize("", false);
 
     std::string sThreadName;
@@ -183,29 +188,127 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs, std::atomic<int
         con.SetIndent(4);
         sThreadName = "normalThread";
     }
+    
+    // SetLoggingState is needed because later we will use CConsole::getConsoleInstance() with module name
+    con.SetLoggingState(sThreadName.c_str(), true);
     con.OLn("%s is starting now", sThreadName.c_str());
 
+    // now we wait for all threads to execute above statements
+    // ##############################################################################################################################
     std::unique_lock<std::mutex> lk(mtx);  // lock must be locked by current thread, so lock is thread-specific, but mutex is shared!
+    
+    // basically numThreadsWaiting and nThreadCntr are used for same purpose, their roles are replaced after each test
+
     numThreadsWaiting++;
-    cv.notify_all();
+    if (numThreadsWaiting == 3)
+    {
+        con.ResetErrorOutsCount();
+        con.ResetSuccessOutsCount();
+        nErrorsOutCount = 0;
+        nSuccessOutCount = 0;
+        nThreadCntr = 0;
+    }
     // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 3 won't have to wait, it will continue
     cv.wait(lk, [&] {return numThreadsWaiting == 3; });
+    cv.notify_all();
     lk.unlock();  // wait() unlocks the lock, but after continuing it will be locked again, so we explicitly unlock it here:
     // if we don't explicitly unlock it, the other 2 threads will wait until a thread exits.
     // we dont need the lock/mutex anymore, because every Console stuff we invoke below are expected to be thread-safe anyway!
 
+    // first test: text output, indentation and mode (colors) are unique for each thread, they dont mess with each other
+    // ##############################################################################################################################
     // TODO: per-module filter setting should be also tested, e.g. getConsoleInstance() accepts module name and stores it globally, it should be per-thread!
     for (int i = 1; i <= 10; i++)
     {
         if (i % 5 == 0)
         {
             const int newIndentation = PFL::random(0, 20);
-            con.SetIndent(newIndentation);
-            con.OLn("%s has set new indentation: %d", sThreadName.c_str(), newIndentation);
+            CConsole::getConsoleInstance(sThreadName.c_str()).SetIndent(newIndentation);
+            CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s has set new indentation: %d", sThreadName.c_str(), newIndentation);
         }
 
-        con.OLn("%s: some log blah blah blah 123 123", sThreadName.c_str());
+        CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s logNo %d: some log blah blah blah 123 123", sThreadName.c_str(), i);
     }
+
+    nThreadCntr++;
+
+    // preparing for next test, we are waiting here for all threads to finish above test
+    // ##############################################################################################################################
+    lk.lock();
+
+    // reset original indentations
+    switch (fs)
+    {
+    case CConsole::FormatSignal::S: con.SetIndent(8); break;
+    case CConsole::FormatSignal::E: con.SetIndent(12); break;
+    default: con.SetIndent(4);
+    }
+    if (nThreadCntr == 3)
+    {
+        // last finishing thread will run this code
+        nErrorsOutCount = con.getErrorOutsCount();
+        nSuccessOutCount = con.getSuccessOutsCount();
+
+        con.OLn("");
+        con.OLn("All threads have reset their indentation and ready for next test!");
+        con.OLn("");
+        con.OLn("Number of error outs during previous test: %d, this is %s!", nErrorsOutCount.load(), (nErrorsOutCount.load() == 12 ? "GOOD" : "BAD"));
+        con.OLn("Number of success outs during previous test: %d, this is %s!", nSuccessOutCount.load(), (nSuccessOutCount.load() == 12 ? "GOOD" : "BAD"));
+        con.OLn("");
+        con.OLn("Next test starting");
+        con.OLn("");
+
+        con.ResetErrorOutsCount();
+        con.ResetSuccessOutsCount();
+        nErrorsOutCount = 0;
+        nSuccessOutCount = 0;
+        nThreadCntr = 0;
+    }
+    
+    // first 2 threads will actually wait here, the last thread setting nThreadCntr to 0 won't have to wait, it will continue
+    numThreadsWaiting = 0;
+    cv.wait(lk, [&] {return nThreadCntr == 0; });
+    cv.notify_all();
+    lk.unlock();  // explanation of why we are doing this is written above before previous test
+
+    // next test: using getConsoleInstance() with different module names, we expect threads are not messing with each other
+    // ##############################################################################################################################
+    //for (int i = 1; i <= 10; i++)
+    //{
+    //    if (i % 3 == 0)
+    //    {
+    //        const bool bModuleEnabled = (PFL::random(0, 1) == 1);
+    //        // we use con instead of getConsoleInstance() because this way log will always appear regardless of module filter state
+    //        con.OLn("%s: has %s logging for its module name", sThreadName.c_str(), bModuleEnabled ? "enabled" : "disabled");
+    //        con.SetLoggingState(sThreadName.c_str(), bModuleEnabled);
+    //    }
+    //    CConsole::getConsoleInstance(sThreadName.c_str()).OLn("%s logNo %d: should this be a visible log, shouldn't be?", sThreadName.c_str(), i);
+    //}
+
+    numThreadsWaiting++;
+    
+    // preparing for next test, we are waiting here for all threads to finish above test
+    // ##############################################################################################################################
+    lk.lock();
+    con.SetLoggingState(sThreadName.c_str(), true);
+    if (numThreadsWaiting == 3)
+    {
+        // last finishing thread will run this code
+        con.OLn("");
+        con.OLn("All threads have re-enabled their logging for their module names and are ready for next test!");
+        con.OLn("Next test starting");
+        con.OLn("");
+        numThreadsWaiting = 0;
+    }
+    
+    // first 2 threads will actually wait here, the last thread setting numThreadsWaiting to 0 won't have to wait, it will continue
+    nThreadCntr = 0;
+    cv.wait(lk, [&] {return numThreadsWaiting == 0; });
+    cv.notify_all();
+    lk.unlock();  // explanation of why we are doing this is written above at first test
+
+    // next test could come here
+    // ##############################################################################################################################
 
     con.OLn("%s is exiting now", sThreadName.c_str());
     con.NOn();
@@ -220,10 +323,9 @@ static void TestConcurrentLogging(CConsole& con)
     con.OLn("Each thread should NOT have impact on other thread's color (formatsignal) or indentation.");
     con.OLn("");
 
-    std::atomic<int> numThreadsWaiting = 0;
-    std::thread successThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::S, std::ref(numThreadsWaiting) };
-    std::thread errorThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::E, std::ref(numThreadsWaiting) };
-    std::thread normalThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::N, std::ref(numThreadsWaiting) };
+    std::thread successThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::S };
+    std::thread errorThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::E };
+    std::thread normalThread = std::thread{ threadFunc, std::ref(con), CConsole::FormatSignal::N };
 
     // thread synchronization for starting their work is in threadFunc(), we are just waiting for them here to finish their job
 
