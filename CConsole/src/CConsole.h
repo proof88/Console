@@ -60,11 +60,13 @@ constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
        if multiple threads are allowed to log, use functions that also start a new log line,
        e.g. OLn().
        Solution:
-       a new mutex should be introduced independent of the already existing mainMutex.
        With lock_guard and unique_lock, the mutex is owned until the owner finally ends the
-       current log line. So when O() is invoked, the lock is kept even when the functions ends,
+       current log line. So when O() is invoked, unique_lock should be used which won't
+       unlock at the end of function, so the lock (the mutex) is kept even when the functions ends,
        other threads will have to wait until a new line is started. Starting a new line will
-       always unlock this mutex.
+       always unlock this mutex. The mutex should be re-entrant, otherwise the same thread
+       won't be able to invoke any consecutive function. Whenever a new line is added, the
+       lock holding this mutex should be unlocked as many times as needed to be finally unlocked.
 */
 
 class CConsole
