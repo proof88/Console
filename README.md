@@ -10,13 +10,22 @@ Today I would rather just use a nice open-source product maintained by someone e
  - thread-safe.
 
 **Missing Features:**
+ - turn on logging only into html file, not to console window (currently logging to html works only when console window is already present);
+ - timestamping;
+ - config file (that could contain e.g. module logging setting);
  - no log file rotation implemented;
  - no log forwarding to external server;
  - no actions to be executed when a specific log appears.
 
 Currently I'm not planning to implement the missing features.
 
+**Known Issues:**
+As described in comment in CConsole.h.
+
 **Requires**: [PFL v1.1](https://github.com/proof88/PFL).
+
+Note that this project is NOT unit-tested, only some showcase tests are implemented in conmain.cpp.  
+If you want to run this, you have to go to **Project Settings** in Visual Studio, then **General Settings**, and change **Configuration Type** from **Static Library** to **Application**. Then simply Build & Run!
 
 <p align="center">
   Example: Windows console window during demo run:<br/>
