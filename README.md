@@ -20,11 +20,11 @@ Today I would rather just use a nice open-source product maintained by someone e
 Currently I'm not planning to implement the missing features.
 
 **Known Issues:**
-As described in comment in CConsole.h.
+As described in comment in [CConsole.h](https://github.com/proof88/Console/blob/master/CConsole/src/CConsole.h).
 
 **Requires**: [PFL v1.1](https://github.com/proof88/PFL).
 
-Note that this project is NOT unit-tested, only some showcase tests are implemented in conmain.cpp.  
+Note that this project is NOT unit-tested, only some showcase tests are implemented in [conmain.cpp](https://github.com/proof88/Console/blob/master/CConsole/src/conmain.cpp).  
 If you want to run this, you have to go to **Project Settings** in Visual Studio, then **General Settings**, and change **Configuration Type** from **Static Library** to **Application**. Then simply Build & Run!
 
 <p align="center">
