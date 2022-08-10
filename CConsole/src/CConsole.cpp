@@ -14,11 +14,13 @@
 
 #include <ctime>
 #include <fstream>
+#include <filesystem>  // requires cpp17
 #include <iostream>
 #include <map>
-#include <mutex>
+#include <mutex>       // requires cpp11
 #include <set>
 #include <string>
+#include <thread>      // requires cpp11
 
 #include "../../../PFL/PFL/PFL.h"
 

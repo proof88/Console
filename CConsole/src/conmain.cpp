@@ -11,10 +11,10 @@
 
 #include <stdlib.h>
 
-#include <atomic>
-#include <condition_variable>
-#include <mutex>
-#include <thread>
+#include <atomic>              // requires cpp11
+#include <condition_variable>  // requires cpp11
+#include <mutex>               // requires cpp11
+#include <thread>              // requires cpp11
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -362,6 +362,15 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
 
 static void TestConcurrentLogging(CConsole& con)
 {   
+    /*
+     * Unfortunately, Valgrind is not available for Windows.
+     * However, there are multiple tools for checking thread behavior.
+     * There is an official extension for VS2022, Concurrency Visualizer:
+     * https://marketplace.visualstudio.com/items?itemName=Diagnostics.DiagnosticsConcurrencyVisualizer2022#overview
+     * 
+     * And also in Windows SDK, there is the Application Verifier:
+     * https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/application-verifier#installing-appverifier
+     */
     con.OLn("%s", __func__);
     con.L();
     con.OLn("You should see 3 different threads logging their own logs with their own color and own indentation.");
