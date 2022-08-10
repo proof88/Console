@@ -38,5 +38,5 @@ If you want to run this, you have to go to **Project Settings** in Visual Studio
   <a href="cconsole-shot-02.PNG" target="_blank"><img src="cconsole-shot-02.PNG" width="450" height="373"></a>
 </p>
 
-The Visual Studio project file is included.<br/>
+The Visual Studio project file is included. The project is configured for Cpp17 because of using std::filesystem.<br/>
 However, if you want to see example of integration in other projects, you may be interested in the Visual Studio solution including other projects as well in [PGE-misc](https://github.com/proof88/PGE-misc) repo.
