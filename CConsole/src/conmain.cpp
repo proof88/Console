@@ -170,6 +170,11 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
     // in case of consecutive Initialize() calls, the parameters don't really matter
     con.Initialize("", false);
 
+    // invoking following 2 functions is not necessary for this test, however I'm explicitly calling them
+    // to remember myself about known issue A) explained in CConsole.h.
+    con.RestoreDefaultColors();
+    con.SaveColors();
+
     std::string sThreadName;
     switch (fs)
     {
