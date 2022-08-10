@@ -6,18 +6,19 @@ Today I would rather just use a nice open-source product maintained by someone e
 **Features** of v1.2:
  - logging to console window (currently only on Windows);
  - logging to html file, with same indentations and colors as to console window;
- - per-module log filtering: you can decide what a module is (e.g. a class) and add per-module (e.g. per-class) usage of CConsole::SetLoggingState() with your module string to turn on/off logging;
- - thread-safe.
+ - delete old html log files during initialization;
+ - per-module log filtering: you can decide what a module is (e.g. a class) and add per-module (e.g. per-class) usage of CConsole::SetLoggingState() with your module name string to turn on/off logging;
+ - thread-safety.
 
 **Missing Features:**
- - turn on logging only into html file, not to console window (currently logging to html works only when console window is already present);
- - timestamping;
- - config file (that could contain e.g. module logging setting);
- - no log file rotation implemented;
- - no log forwarding to external server;
- - no actions to be executed when a specific log appears.
+ - HIGH PRIO: turn on logging ONLY into html file, not to console window (currently logging to html works only when console window is also present);
+ - MED PRIO: timestamping;
+ - LOW PRIO: config file (that could contain e.g. module logging setting);
+ - LOW PRIO: no log file rotation implemented;
+ - LOW PRIO: no log forwarding to external server;
+ - LOW PRIO: no actions to be executed when a specific log appears.
 
-Currently I'm not planning to implement the missing features.
+Currently I'm planning to implement only the HIGH PRIO missing features.
 
 **Known Issues:**
 As described in comment in [CConsole.h](https://github.com/proof88/Console/blob/master/CConsole/src/CConsole.h).
