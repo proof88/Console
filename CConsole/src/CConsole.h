@@ -31,12 +31,15 @@ typedef unsigned short      WORD;
 constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
 
 /**
-    Class handling console window.
+    Class handling a console window.
     Intentionally pimpl instead of abstract interface, please don't try to change.
     Thread-safe.
+    Unfortunately logs are not buffered, instead they are written to console and log file
+    immediately. This makes logging a bit slower, but currently there is no need for a more
+    efficient behavior.
 
     Known issues:
-    A) reference-counting is done per-process, not per-thread.
+    A) Reference-counting is done per-process, not per-thread.
        Reference count is increased with every call to Initialize().
        When Deinitialize() is invoked, we cannot decide when we can
        free up per-thread log state data. We free up per-thread state data only when
@@ -44,29 +47,75 @@ constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
        a previously used thread id might be already used again by a newly born thread,
        and that newly born thread will use the log state data of a previously died
        thread instead of clean data.
+       
        Workaround:
-       threads should manually invoke RestoreDefaultColors() and SaveColors() after they
+       Threads should manually invoke RestoreDefaultColors() and SaveColors() after they
        invoke their FIRST Initialize() during their birth.
+       
        Solution:
-       reference counting should be per-thread. This also means Deinitialize() should
+       Reference counting should be per-thread. This also means Deinitialize() should
        summarize all reference counts before deciding to clean everything up at the end.
 
-    B) threads don't wait for each other to finish their current line.
-       Functions that don't start a new log line might cause wrong log output.
+    B) Threads don't wait for each other to finish their current line.
+       Functions that don't start a new log line after printing the log might cause wrong log output.
        Example: O(). This function is typically used when we are iteratively building up
        a log line. In between consecutive calls to this function, other threads might also
        write to log.
+       
        Workaround:
-       if multiple threads are allowed to log, use functions that also start a new log line,
-       e.g. OLn().
-       Solution:
-       With lock_guard and unique_lock, the mutex is owned until the owner finally ends the
-       current log line. So when O() is invoked, unique_lock should be used which won't
-       unlock at the end of function, so the lock (the mutex) is kept even when the functions ends,
-       other threads will have to wait until a new line is started. Starting a new line will
-       always unlock this mutex. The mutex should be re-entrant, otherwise the same thread
-       won't be able to invoke any consecutive function. Whenever a new line is added, the
-       lock holding this mutex should be unlocked as many times as needed to be finally unlocked.
+       If multiple threads are allowed to log, use functions that also start a new log line
+       after printing the log e.g. OLn(). Don't use O() and similar functions when multiple
+       threads are expected to log.
+       
+       Possible Solution:
+       With lock_guard and unique_lock, the mutex should be owned until the owner finally ends the
+       current log line. Currently only lock_guard is used in all public interfacing functions, but
+       this should be changed to unique_lock in those functions that doesn't end current log line.
+       So when O() is invoked, unique_lock should be used which won't unlock at the end of function,
+       so the lock (the mutex) is kept even when the functions ends. Ending the current line in
+       another call should always unlock this lock / release the mutex.
+       To achieve this, mainMutex should be recursive, otherwise the same thread won't be able to
+       invoke any consecutive public logging function.
+       Whenever a new line is added (the current line is ended), the lock holding this mutex should be
+       unlocked as many times as needed to be finally unlocked (because the lock with recursive mutex
+       should be unlocked as many times as it was previously locked to finally release the mutex).
+       
+       Drawbacks:
+       Other threads will have to wait until a new line is started (when the thread owning the mutex
+       finally ends the current line). This means that some logs from other threads will be delayed,
+       although they would log something earlier. Buffering (queueing) would solve this issue too,
+       but currently it would take some more time to implement.
+       
+       Decision:
+       I decided not to fix this because even if I fix this issue, still there is another legacy issue
+       even in a single-threaded scenario which makes use of O() and similar functions a bit annoying.
+       This is explained in known issue C).
+
+    C) Setting error mode for only a part of a log line can make error-only logging look weird and useless.
+       For example, if you log something with O() and then process something (e.g. load a bitmap), and
+       then you would finish the line with either error mode or success mode based on the result of the
+       processing (e.g. bitmap load failed or succeeded), then the error mode will be applied to that
+       part of the log line only where you enabled the error mode. If normal logging is disabled, and only
+       errors are enabled, this would lead to printing only that part of the log line, without the
+       earlier part of the line. This looks bad as you dont really know what really failed.
+       
+       Workaround:
+       Use functions that also start a new log line after printing the log, e.g. EOLn(), so the whole line
+       will be logged in error mode. Don't use O() and similar functions.
+       
+       Possible Solution:
+       In case of error, the previous few logged lines should be printed to log even if they were filtered
+       out by default, so the log reader has a clue what really went wrong. To accomplish this, we need to
+       maintain a fifo buffer with the most recent log lines, and being able to log it on-demand.
+       Note that this could bring in another issue:
+       usually if something fails and logs error, something else depending on the previous result will
+       also fail and log error. In such case, it can happen that the fifo buffer is printed multiple times,
+       whenever an error is logged. This also doesn't look good. To overcome this, we should delay the fifo
+       buffer printout until the first next non-error printout.
+       Also I think that checking how the indentation changes after an error is logged is also helpful because
+       usually if something fails, then the indentation is expected to be decreased and some other error
+       might be also logged, and whenever the indentation increases we most probably left that code area
+       which handled the failure so we can print out the fifo buffer.      
 */
 
 class CConsole
