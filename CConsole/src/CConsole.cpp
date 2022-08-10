@@ -69,6 +69,7 @@ static std::mutex mainMutex;  // did not want to put this into CConsoleImpl beca
 class CConsole::CConsoleImpl
 {
 public:
+    void DeleteOldLogFiles(size_t nKeep);                        /**< Deletes the old log files. */
     void SetLoggerModuleName(const char* loggerModuleName);      /**< Sets the current logger module name. */
     bool getLoggingState(const char* loggerModuleName);          /**< Gets logging state for the given logger module. */
     void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
@@ -269,6 +270,42 @@ private:
 
 
 // ############################### PUBLIC ################################
+
+/**
+    Deletes the old log files.
+    @param nKeep How many log files are allowed to be kept in their directory with the new log file being created.
+*/
+void CConsole::CConsoleImpl::DeleteOldLogFiles(size_t nKeep)
+{
+    std::set<std::filesystem::path> logFiles;
+    for (const auto& entry : std::filesystem::directory_iterator("."))
+    {
+        // Log file name looks like this when iterated here: ".\log_%Y-%m-%d_%H-%M-%S.html"
+        if ((entry.path().extension().string() == ".html") && (entry.path().string().find("log_") == 2))
+        {
+            logFiles.insert(entry.path());  // inserting to set automatically makes them sorted from oldest to newest
+        }
+    }
+    if (logFiles.size() > (nKeep-1))
+    {
+        const size_t nLogFilesToDelete = logFiles.size() - (nKeep - 1);
+        OLn("Deleting the following %d oldest log file(s):", nLogFilesToDelete);
+        size_t iLogFileToDelete = 0;
+        for (const auto& logFile : logFiles)
+        {
+            OLn("  %s", logFile.string().c_str());
+            std::error_code errCode;
+            if (!std::filesystem::remove(logFile, errCode))
+            {
+                EOLn("  ERROR: Could not remove above file, error code: %d, message: %s", errCode.value(), errCode.message().c_str());
+            }
+            if (++iLogFileToDelete == nLogFilesToDelete)
+            {
+                break;
+            }
+        }
+    }
+}
 
 
 /**
@@ -2140,6 +2177,8 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             crd.Y = 10000;
             SetConsoleScreenBufferSize(consoleImpl->hConsole, crd);
         }
+        consoleImpl->OLn("CConsole::%s() %s", __func__, CCONSOLE_VERSION);
+
         consoleImpl->bAllowLogFile = createLogFile;
         if ( createLogFile )
         {
@@ -2152,6 +2191,9 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             }
             else
             {
+                // before opening new file, let's get rid of some older log files
+                consoleImpl->DeleteOldLogFiles(3);
+
                 consoleImpl->fLog.open(fLogFilename);
                 if ( consoleImpl->fLog.fail() )
                 {
@@ -2170,7 +2212,7 @@ void CConsole::Initialize(const char* title, bool createLogFile)
             }
         }
 
-        consoleImpl->SOLn("CConsole::%s() > CConsole (%s) has been initialized with title: %s, refcount: %d!", __func__, CCONSOLE_VERSION, title, consoleImpl->nRefCount);
+        consoleImpl->SOLn("CConsole::%s() > CConsole has been initialized with title: %s, refcount: %d!", __func__, title, consoleImpl->nRefCount);
 
         // now we get rid of our hack
         consoleImpl->logState[std::this_thread::get_id()].sLoggerName = prevLoggerName;

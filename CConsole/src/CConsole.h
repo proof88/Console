@@ -245,7 +245,6 @@ public:
     CConsole& operator<<(
         const CConsole::FormatSignal& fs);   /**< Changes current mode or adds a new line. */
 
-
 private:
 
     static CConsole consoleInstance;
