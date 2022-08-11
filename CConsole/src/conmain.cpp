@@ -368,6 +368,9 @@ static void TestConcurrentLogging(CConsole& con)
      * There is an official extension for VS2022, Concurrency Visualizer:
      * https://marketplace.visualstudio.com/items?itemName=Diagnostics.DiagnosticsConcurrencyVisualizer2022#overview
      * 
+     * Intel Inspector can pinpoint data race, etc:
+     * https://www.intel.com/content/www/us/en/developer/articles/tool/oneapi-standalone-components.html#inspector
+     * 
      * And also in Windows SDK, there is the Application Verifier:
      * https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/application-verifier#installing-appverifier
      */
