@@ -57,6 +57,8 @@
 
 using namespace std;
 
+static constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
+
 static std::mutex mainMutex;  // did not want to put this into CConsoleImpl because then CConsole::IsInitialized() could not be protected by this mutex when impl is not yet existing
 
 /*

@@ -28,8 +28,6 @@ typedef unsigned long       DWORD;
 typedef unsigned short      WORD;
 #endif
     
-constexpr auto CCONSOLE_VERSION = "v1.2 built on " __DATE__" @ " __TIME__;
-
 /**
     Class handling a console window.
     Intentionally pimpl instead of abstract interface, please don't try to change.
