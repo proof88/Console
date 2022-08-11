@@ -114,6 +114,7 @@ public:
         WORD clr, const char* html = NULL);    /**< Sets bools color. */
 
     void O(const char* text, va_list list);       /**< Prints text to console. */
+    void O(const char* text, ...);                /**< Prints text to console. */
     void OLn(const char* text, va_list list);     /**< Prints text to console and adds a new line. */
     void OLn(const char* text, ...);              /**< Prints text to console and adds a new line. */
     void OI();                                    /**< Indent(). */
@@ -815,6 +816,21 @@ void CConsole::CConsoleImpl::O(const char* text, va_list list)
 
 
 /**
+    Prints text to console.
+*/
+void CConsole::CConsoleImpl::O(const char* text, ...)
+{
+    if (!bInited)
+        return;
+
+    va_list list;
+    va_start(list, text);
+    O(text, list);
+    va_end(list);
+} // O()
+
+
+/**
     Prints text to console and adds a new line.
 */
 void CConsole::CConsoleImpl::OLn(const char* text, va_list list)
@@ -990,9 +1006,12 @@ void CConsole::CConsoleImpl::L(int n)
     if ( !bInited )
         return;
 
+    // we need to invoke O() instead of WriteText(), because latter won't take care of the indentation properly for html
     for (int i = 0; i < n; i++)
-        WriteText("-=");
-    WriteText("\n\r");
+    {
+        O("-=");
+    }
+    OLn("\n\r");
 } // L()
 
 
