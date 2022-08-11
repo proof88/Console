@@ -75,7 +75,7 @@ public:
     void SetLoggingState(const char* loggerModule, bool state);  /**< Sets logging on or off for the given logger module. */
     void SetErrorsAlwaysOn(bool state);                          /**< Sets errors always appear irrespective of logging state of current logger module. */
 
-    int  getIndent();       /**< Gets the current indentation. */
+    int  getIndent();             /**< Gets the current indentation. */
     void SetIndent(int value);    /**< Sets the current indentation. */
     void Indent();                /**< Increases indentation. */
     void IndentBy(int value);     /**< Increases indentation by the given value. */
@@ -126,9 +126,9 @@ public:
     void OOO(const char* text, va_list list);     /**< OO() + O(text). */
     void OOOLn(const char* text, va_list list);   /**< OO() + OLn(text). */
     void OLnOO(const char* text, va_list list);   /**< OLn(text) + OO(). */
-    void OOb(int value);                 /**< OutdentBy(). */
+    void OOb(int value);                          /**< OutdentBy(). */
     void OIOLnOO(const char* text, va_list list); /**< OI() + OLn(text) + OO(). */
-    void L(int n = 20);                  /**< Prints line to console and adds a new line. */
+    void L(int n = 20);                           /**< Prints line to console and adds a new line. */
 
     void NOn();                          /**< Normal-mode on. */
     void EOn();                          /**< Error-mode on. */
