@@ -293,13 +293,17 @@ static void threadFunc(CConsole& con, CConsole::FormatSignal fs)
     int nHiddenLogs = 0;
     for (int i = 1; i <= 10; i++)
     {
-        if (i % 3 == 0)
+        if (i % 2 == 0)
         {
             const bool bModuleEnabled = (PFL::random(0, 1) == 1);
             if (con.getLoggingState(sThreadName.c_str()) != bModuleEnabled)
             {
                 // here we use empty string for getConsoleInstance() because this way log will always appear regardless of module filter state
-                CConsole::getConsoleInstance("").OLn("%s: has %s logging for its module name", sThreadName.c_str(), bModuleEnabled ? "enabled" : "disabled");
+                CConsole::getConsoleInstance("").OLn("%s: has %s logging for its module name with %d visible and %d hidden logs so far",
+                    sThreadName.c_str(), 
+                    bModuleEnabled ? "enabled" : "disabled",
+                    nVisibleLogs,
+                    nHiddenLogs);
                 // note that using empty string will actually clear the logger module name for current thread, so make sure
                 // we always use the logger module name with getConsoleInstance() whenever we are logging something, to set the name again!
                 con.SetLoggingState(sThreadName.c_str(), bModuleEnabled);
