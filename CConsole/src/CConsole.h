@@ -113,7 +113,27 @@ typedef unsigned short      WORD;
        Also I think that checking how the indentation changes after an error is logged is also helpful because
        usually if something fails, then the indentation is expected to be decreased and some other error
        might be also logged, and whenever the indentation increases we most probably left that code area
-       which handled the failure so we can print out the fifo buffer.      
+       which handled the failure so we can print out the fifo buffer.  
+
+    D) Non-breakable spaces are not always put into html log file.
+       Consider the following example:
+       OLn("apple     banana");
+       The number of spaces will be correct in the console window, but only 1 space will be visible in the
+       html log file.
+
+       Workaround:
+       O("apple");
+       O("     ");
+       OLn("banana");
+
+       Possible Solution:
+       I've just quickly checked and saw CConsoleImpl::WriteText() puts nbsp characters only when the whole
+       given string consists of space characters only. I think this should be changed: anywhere in the string
+       where we find more than 1 spaces next to each other, nbsp chars should be inserted into the html file.
+       Also it is worth noting that if the string is a formatter string (contains %), then the big switch-case
+       of WriteFormattedTextEx() will be executed instead of WriteText(), and that switch case walks the string
+       char-by-char. Similar logic should be inserted there as well: if we are encountering a space char right
+       after another space char, we should write nbsp to the html file instead of regular space char.
 */
 
 class CConsole
