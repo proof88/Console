@@ -10,13 +10,14 @@ Today I would rather just use a nice open-source product maintained by someone e
  - per-module log filtering: you can decide what a module is (e.g. a class) and add per-module (e.g. per-class) usage of CConsole::SetLoggingState() with your module name string to turn on/off logging;
  - thread-safety.
 
-**Missing Features:**
- - HIGH PRIO: turn on logging ONLY into html file, not to console window (currently logging to html works only when console window is also present);
- - MED PRIO: timestamping;
- - LOW PRIO: config file (that could contain e.g. module logging setting);
- - LOW PRIO: no log file rotation implemented;
- - LOW PRIO: no log forwarding to external server;
- - LOW PRIO: no actions to be executed when a specific log appears.
+**Missing Features (with priority):**
+ - HIGH: turn on logging ONLY into html file, not to console window (currently logging to html works only when console window is also present);
+ - MED: timestamping (optional);
+ - LOW: automatically write the module name at the beginning of the line (optional);
+ - LOW: config file (that could contain e.g. module logging setting);
+ - LOW: no log file rotation implemented;
+ - LOW: no log forwarding to external server;
+ - LOW: no actions to be executed when a specific log appears.
 
 Currently I'm planning to implement only the HIGH PRIO missing features.
 
