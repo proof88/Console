@@ -12,8 +12,10 @@ Today I would rather just use a nice open-source product maintained by someone e
 
 **Missing Features (with priority):**
  - HIGH: turn on logging ONLY into html file, not to console window (currently logging to html works only when console window is also present);
+ - MED: if module logging not enabled but the module is logging an error, the module name should be also logged automatically for more clarity;
  - MED: timestamping (optional);
  - LOW: automatically write the module name at the beginning of the line (optional);
+ - LOW: optionally the "ERROR" string automatic logging in case of error log could be turned on;
  - LOW: config file (that could contain e.g. module logging setting);
  - LOW: no log file rotation implemented;
  - LOW: no log forwarding to external server;
