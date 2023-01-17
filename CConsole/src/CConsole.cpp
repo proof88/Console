@@ -22,6 +22,8 @@
 #include <string>
 #include <thread>      // requires cpp11
 
+#include <winsock.h>   // for gethostname()
+
 #include "../../../PFL/PFL/PFL.h"
 
 // WINAPI header include just for the FOREGROUND_XXX and WORD macros and console API functions
@@ -283,7 +285,7 @@ void CConsole::CConsoleImpl::DeleteOldLogFiles(size_t nKeep)
     std::set<std::filesystem::path> logFiles;
     for (const auto& entry : std::filesystem::directory_iterator("."))
     {
-        // Log file name looks like this when iterated here: ".\log_%Y-%m-%d_%H-%M-%S.html"
+        // Log file name looks like this when iterated here: ".\log_%hostname_%Y-%m-%d_%H-%M-%S.html"
         if ((entry.path().extension().string() == ".html") && (entry.path().string().find("log_") == 2))
         {
             logFiles.insert(entry.path());  // inserting to set automatically makes them sorted from oldest to newest
@@ -2204,11 +2206,30 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         if ( createLogFile )
         {
             const auto time = std::time(nullptr);
-            char fLogFilename[100];
-            if ( 0 == std::strftime(fLogFilename, sizeof(fLogFilename), "log_%Y-%m-%d_%H-%M-%S.html", std::gmtime(&time)) )
+            char fLogFilename[300] = "log_";
+            size_t nStrLen = strlen(fLogFilename);
+
+            const WORD wWsaVersionRequested = MAKEWORD(2, 2);
+            WSADATA wsaData;
+            const int nWsaStartupRet = WSAStartup(wWsaVersionRequested, &wsaData);
+            if (nWsaStartupRet == 0)
+            {
+                const int nGetHostNameRet = gethostname(fLogFilename + nStrLen, sizeof(fLogFilename) - nStrLen);
+                if (nGetHostNameRet != 0)
+                {
+                    consoleImpl->EOLn("ERROR: Couldn't get host name, error code: %d", nGetHostNameRet);
+                }
+                nStrLen = strlen(fLogFilename);
+            }
+            else
+            {
+                consoleImpl->EOLn("ERROR: Couldn't initialize WSA, error code: %d", nWsaStartupRet);
+            }
+            
+            if ( 0 == std::strftime(fLogFilename + nStrLen, sizeof(fLogFilename)- nStrLen, "_%Y-%m-%d_%H-%M-%S.html", std::gmtime(&time)) )
             {
                 consoleImpl->bAllowLogFile = false;
-                consoleImpl->EOLn("ERROR: Couldn't generate file name!");
+                consoleImpl->EOLn("ERROR: Couldn't generate file name! Initial name was: \"%s\"", fLogFilename);
             }
             else
             {
