@@ -22,15 +22,11 @@
 #include <string>
 #include <thread>      // requires cpp11
 
-#include <winsock.h>   // for gethostname()
-
 #include "../../../PFL/PFL/PFL.h"
-
 // WINAPI header include just for the FOREGROUND_XXX and WORD macros and console API functions
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
+#include "../../../PFL/PFL/winproof88.h"
+
+#include <winsock.h>   // for gethostname()
 
 // unused warnings
 // todo: revise these warnings when C++11 compiler is set, so that std::iota, etc can be used instead of itoa

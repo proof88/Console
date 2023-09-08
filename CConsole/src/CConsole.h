@@ -9,8 +9,6 @@
     ###################################################################################
 */
 
-
-
 // copied NULL from stdlib.h to avoid including big ass headers
 /* Define NULL pointer value */
 #ifndef NULL
@@ -20,7 +18,6 @@
 #define NULL    ((void *)0)
 #endif
 #endif
-
 
 // copied WORD and DWORD from minwindef.h to avoid including big ass headers
 #ifndef _MINWINDEF_
