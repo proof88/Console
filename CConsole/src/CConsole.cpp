@@ -19,7 +19,6 @@
 #include <map>
 #include <mutex>       // requires cpp11
 #include <set>
-#include <string>
 #include <thread>      // requires cpp11
 
 #include "../../../PFL/PFL/PFL.h"
@@ -2134,12 +2133,13 @@ void CConsole::SetErrorsAlwaysOn(bool state)
     Deinitialize() once at thread shutdown.
     If CConsole is already initialized, then the parameters used in subsequent calls to Initialize() are ignored.
 
-    @param title The caption text that will be set in the appearing console window.
-                 Ignored in subsequent calls, when CConsole is already initialized.
+    @param title         The caption text that will be set in the appearing console window.
+                         Ignored in subsequent calls, when CConsole is already initialized.
     @param createLogFile If true, a HTML-based log file will be created and logs will be written into that in parallel with writing to the console window.
                          Ignored in subsequent calls, when CConsole is already initialized.
+    @param sFilenameAux  Optional string to be included in the log file name.
 */
-void CConsole::Initialize(const char* title, bool createLogFile)
+void CConsole::Initialize(const char* title, bool createLogFile, const std::string& sFilenameAux)
 {
 #ifdef CCONSOLE_IS_ENABLED
     std::lock_guard<std::mutex> lock(mainMutex);
@@ -2203,7 +2203,17 @@ void CConsole::Initialize(const char* title, bool createLogFile)
         {
             const auto time = std::time(nullptr);
             char fLogFilename[300] = "log_";
+            
             size_t nStrLen = strlen(fLogFilename);
+            if (!sFilenameAux.empty())
+            {
+                const int nSnPrintfRet = snprintf(fLogFilename + nStrLen, 300, "%s_", sFilenameAux.c_str());
+                nStrLen = strlen(fLogFilename);
+                if ((nSnPrintfRet <= 0) || (nSnPrintfRet == 300))
+                {
+                    consoleImpl->EOLn("ERROR: snprintf() failed with sFilenameAux \"%s\", error code: %d", sFilenameAux.c_str(), nSnPrintfRet);
+                }
+            }
 
             const WORD wWsaVersionRequested = MAKEWORD(2, 2);
             WSADATA wsaData;

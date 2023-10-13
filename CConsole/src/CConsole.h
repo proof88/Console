@@ -9,6 +9,8 @@
     ###################################################################################
 */
 
+#include <string>
+
 // copied NULL from stdlib.h to avoid including big ass headers
 /* Define NULL pointer value */
 #ifndef NULL
@@ -157,7 +159,8 @@ public:
 
     void Initialize(
         const char* title,
-        bool createLogFile );     /**< This creates actually the console window. */
+        bool createLogFile,
+        const std::string& sFilenameAux = "");     /**< This creates actually the console window. */
     void Deinitialize();          /**< This deletes the console window. */
     bool isInitialized() const;   /**< Tells if console window is already initialized. */
 
