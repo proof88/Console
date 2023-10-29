@@ -11,7 +11,7 @@ Today I would rather just use a nice open-source product maintained by someone e
  - thread-safety.
 
 **Missing Features (with priority):**
- - HIGH: turn on logging ONLY into html file, not to console window (currently logging to html works only when console window is also present);
+ - HIGH: turn on logging ONLY into html file, not to console window (currently logging to html works only when console window is also present): https://github.com/proof88/Console/issues/1;
  - MED: if module logging not enabled but the module is logging an error, the module name should be also logged automatically for more clarity;
  - MED: timestamping (optional);
  - MED: add aux string to filename even later after initialization is already done (in such case the file name should be renamed);
