@@ -9,6 +9,8 @@ EV2008P03Debug/
 [Rr]eleases/
 [Rr]eleasePR00FPS/
 EV2008P03Release/
+.vs/
+out/
 
 *.tlog
 *.log
