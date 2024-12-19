@@ -3,7 +3,7 @@ Console class for logging purpose on Windows and hopefully later on Linux.
 I wouldn't write this from scratch today, but back in 2011 I wanted to write a logger class that has function with variable number of parameter count, so I made this.  
 Today I would rather just use a nice open-source product maintained by someone else. But since I wrote this, I'm still using it!
 
-**Features** of v1.2:
+**Features** of v1.3:
  - logging to console window (currently only on Windows);
  - logging to html file, with same indentations and colors as to console window;
  - delete old html log files during initialization;
@@ -27,7 +27,7 @@ Currently I'm planning to implement only the HIGH PRIO missing features.
 **Known Issues:**
 As described in comment in [CConsole.h](https://github.com/proof88/Console/blob/master/CConsole/src/CConsole.h).
 
-**Requires**: [PFL v1.1](https://github.com/proof88/PFL).
+**Requires**: [PFL v1.2](https://github.com/proof88/PFL).
 
 Note that this project is NOT unit-tested, only some showcase tests are implemented in [conmain.cpp](https://github.com/proof88/Console/blob/master/CConsole/src/conmain.cpp).  
 If you want to run this, you have to go to **Project Settings** in Visual Studio, then **General Settings**, and change **Configuration Type** from **Static Library** to **Application**. Then simply Build & Run!
