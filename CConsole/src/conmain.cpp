@@ -420,6 +420,8 @@ int WINAPI WinMain(const HINSTANCE hInstance, const HINSTANCE hPrevInstance, con
     con.L();
     con.OLn("");
 
+    // normally it is not recommended to pass a simple Console reference because other functions might change the logger module name.
+    // However in this program, CConsole::SetLoggerModuleName() is not invoked anywhere, so we are ok.
     TestDefaultColors(con);
     TestErrorMode(con);
     TestCustomColors(con);
